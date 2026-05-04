@@ -61,4 +61,7 @@ sequenceDiagram
 
 ### Components Pool
 
-将所有 Component 赋予一个唯一的位置信息（如在地图中所在的坐标 `(x, y)`），所有的请求# endfield-AIC-simulation-v2
+- 将所有 Component 赋予一个唯一的位置信息（如在地图中所在的坐标 `(x, y)`）
+- 统一 Packet 结构，减少数据大小和序列化开销；
+- 解耦组件通信，实现异步非阻塞的消息传递。
+- 其他通信方面的优化# endfield-AIC-simulation-v2
