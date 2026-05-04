@@ -1,0 +1,67 @@
+{
+    "depot-access": {
+        "depot-loader": {
+            "coverage": [3, 1], 
+            "ports": [
+                {"type": "output", "offset": [1, 1], "direction": "up"}
+            ]
+        }, 
+        "depot-unloader": {
+            "coverage": [3, 1], 
+            "ports": [
+                {"type": "input", "offset": [1, -1], "direction": "down"}
+            ]
+        }, 
+        "protocol-stash": {
+            "coverage": [3, 3], 
+            "ports": [
+                {"type": "input", "offset": [0, -1], "direction": "down"}, 
+                {"type": "input", "offset": [1, -1], "direction": "down"}, 
+                {"type": "input", "offset": [2, -1], "direction": "down"}, 
+                {"type": "output", "offset": [0, 1], "direction": "up"}, 
+                {"type": "output", "offset": [1, 1], "direction": "up"}, 
+                {"type": "output", "offset": [2, 1], "direction": "up"}
+            ]
+        }
+    }, 
+    "logistics-unit": {
+        "belt": {
+            "belt-bridge": {
+                "coverage": [1, 1], 
+                "ports": []
+            }, 
+            "converger": {
+                "coverage": [1, 1], 
+                "ports": [
+                    {"type": "input", "offset": [-1, 0], "direction": "right"}, 
+                    {"type": "input", "offset": [0, -1], "direction": "down"}, 
+                    {"type": "input", "offset": [1, 0], "direction": "left"}, 
+                    {"type": "output", "offset": [0, 1], "direction": "up"}
+                ]
+            }, 
+            "conveyor": {
+                "coverage": [1, 1], 
+                "ports": [
+                    {"type": "input", "offset": [0, -1], "direction": "down"}, 
+                    {"type": "output", "offset": [0, 1], "direction": "up"}
+                ]
+            }, 
+            "item-control-port": {
+                "coverage": [1, 1], 
+                "ports": [
+                    {"type": "input", "offset": [0, -1], "direction": "down"}, 
+                    {"type": "output", "offset": [0, 1], "direction": "up"}
+                ]
+            }, 
+            "splitter": {
+                "coverage": [1, 1], 
+                "ports": [
+                    {"type": "input", "offset": [0, -1], "direction": "down"}, 
+                    {"type": "output", "offset": [-1, 0], "direction": "right"}, 
+                    {"type": "output", "offset": [0, 1], "direction": "up"}, 
+                    {"type": "output", "offset": [1, 0], "direction": "left"}
+                ]
+            }
+        }
+    }
+}

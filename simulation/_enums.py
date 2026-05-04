@@ -1,0 +1,59 @@
+from enum import Enum, auto
+
+class Direction(Enum):
+    UP = auto()
+    DOWN = auto()
+    LEFT = auto()
+    RIGHT = auto()
+
+from enum import Enum, auto
+
+class ComponentType(Enum):
+    # Depot Access
+    DEPOT_ACCESS_CONDUIT_INLET_MANIFOLD = auto()
+    DEPOT_ACCESS_CONDUIT_INLET = auto()
+    DEPOT_ACCESS_CONDUIT_OUTLET_MANIFOLD = auto()
+    DEPOT_ACCESS_CONDUIT_OUTLET = auto()
+    DEPOT_ACCESS_DEPOT_LOADER = auto()
+    DEPOT_ACCESS_DEPOT_UNLOADER = auto()
+    DEPOT_ACCESS_FLUID_TANK = auto()
+    DEPOT_ACCESS_PROTOCOL_STASH = auto()
+
+    # Logistics Units - Belt
+    LOGISTICS_BELT_BELT_BRIDGE = auto()
+    LOGISTICS_BELT_CONVERGER = auto()
+    LOGISTICS_BELT_CONVEYOR = auto()
+    LOGISTICS_BELT_ITEM_CONTROL_PORT = auto()
+    LOGISTICS_BELT_SPLITTER = auto()
+
+    # Logistics Units - Pipe
+    LOGISTICS_PIPE_PIPE_BRIDGE = auto()
+    LOGISTICS_PIPE_PIPE_CONTROL_PORT = auto()
+    LOGISTICS_PIPE_PIPE_CONVERGER = auto()
+    LOGISTICS_PIPE_PIPE_SPLITTER = auto()
+    LOGISTICS_PIPE_PIPE = auto()
+
+    # Power Unit
+    POWER_UNIT_THERMAL_BANK = auto()
+
+    # Production Unit
+    PRODUCTION_UNIT_EXPANDED_CRUCIBLE = auto()
+    PRODUCTION_UNIT_FILLING_UNIT = auto()
+    PRODUCTION_UNIT_FITTING_UNIT = auto()
+    PRODUCTION_UNIT_FORGE_OF_THE_SKY = auto()
+    PRODUCTION_UNIT_GEARING_UNIT = auto()
+    PRODUCTION_UNIT_GRINDING_UNIT = auto()
+    PRODUCTION_UNIT_MOULDING_UNIT = auto()
+    PRODUCTION_UNIT_PACKAGING_UNIT = auto()
+    PRODUCTION_UNIT_PLANTING_UNIT = auto()
+    PRODUCTION_UNIT_PURIFICATION_UNIT = auto()
+    PRODUCTION_UNIT_REACTOR_CRUCIBLE = auto()
+    PRODUCTION_UNIT_REFINING_UNIT = auto()
+    PRODUCTION_UNIT_SEED_PICKING_UNIT = auto()
+    PRODUCTION_UNIT_SHREDDING_UNIT = auto()
+    PRODUCTION_UNIT_WATER_TREATMENT_UNIT = auto()
+
+class LinkType(Enum):
+    INPUT = auto()
+    OUTPUT = auto()
+    NONE = auto()
