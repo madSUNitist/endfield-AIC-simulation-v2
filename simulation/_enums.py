@@ -1,12 +1,57 @@
 from enum import Enum, auto
 
-class Direction(Enum):
-    UP = auto()
-    DOWN = auto()
-    LEFT = auto()
-    RIGHT = auto()
 
-from enum import Enum, auto
+class Direction(Enum):
+    UP    = (0, +1)
+    DOWN  = (0, -1)
+    LEFT  = (+1, 0)
+    RIGHT = (-1, 0)
+    
+    def __matmul__(self, other):
+        from .utils import Vec
+        new_direction = Vec(*self.value) @ other
+        match new_direction.x, new_direction.y:
+            case 0, 1:
+                return Direction.UP
+            case 0, -1:
+                return Direction.DOWN
+            case 1, 0:
+                return Direction.LEFT
+            case -1, 0:
+                return Direction.RIGHT
+            case _:
+                raise KeyError(new_direction)
+
+class Rotation(Enum):
+    ROT_0 = auto()
+    ROT_1 = auto()
+    ROT_2 = auto()
+    ROT_3 = auto()
+    
+    def __matmul__(self, other):
+        match (self.value, other):
+            case Rotation.ROT_0, _:
+                return other
+            case _, Rotation.ROT_0:
+                return self
+            case Rotation.ROT_1, Rotation.ROT_1:
+                return Rotation.ROT_2
+            case Rotation.ROT_1, Rotation.ROT_2:
+                return Rotation.ROT_3
+            case Rotation.ROT_1, Rotation.ROT_3:
+                return Rotation.ROT_0
+            case Rotation.ROT_2, Rotation.ROT_1:
+                return Rotation.ROT_3
+            case Rotation.ROT_2, Rotation.ROT_2:
+                return Rotation.ROT_0
+            case Rotation.ROT_2, Rotation.ROT_3:
+                return Rotation.ROT_1
+            case Rotation.ROT_3, Rotation.ROT_1:
+                return Rotation.ROT_0
+            case Rotation.ROT_3, Rotation.ROT_2:
+                return Rotation.ROT_1
+            case Rotation.ROT_3, Rotation.ROT_3:
+                return Rotation.ROT_2
 
 class ComponentType(Enum):
     # Depot Access

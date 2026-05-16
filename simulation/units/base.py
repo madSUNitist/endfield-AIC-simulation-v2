@@ -1,31 +1,35 @@
-from typing import Sequence
+from typing import List
 
-from .._types import Coordinate, Coverage
-from .._enums import Direction
-from ..component_pool import ComponentPool
+from .._enums import LinkType, ComponentType
 
 
 class Base(object):
+    component_type: ComponentType
+    
     in_degree:  int
     out_degree: int
     
-    upstreams:   Sequence["Base"]
-    downstreams: Sequence["Base"]
+    upstreams:   List["Base"]
+    downstreams: List["Base"]
     
-    def __init__(self, pos: Coordinate, pool: ComponentPool) -> None:
+    def __init__(self, comp_id: int) -> None:
+        self.id = comp_id
+        
         self.in_degree  = 0
         self.out_degree = 0
         self.upstreams   = []
         self.downstreams = []
-        
-        x, y = pos
-        for direction, (dx, dy) in (
-            (Direction.LEFT, (-1, 0)), 
-            (Direction.RIGHT, (1, 0)), 
-            (Direction.UP, (0, -1)), 
-            (Direction.DOWN, (0, 1))
-        ):
-            component = pool.get((x + dx, y + dy))
+    
+    def add_link(self, component: "Base", link_type: LinkType):
+        match link_type:
+            case LinkType.INPUT:
+                self.in_degree += 1
+                self.upstreams.append(component)
+            case LinkType.OUTPUT:
+                self.out_degree += 1
+                self.downstreams.append(component)
+            case LinkType.NONE:
+                return
     
     def _request(self):
         pass

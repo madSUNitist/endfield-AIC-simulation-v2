@@ -5,6 +5,8 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "graphviz>=0.21",
+    "mypy>=2.1.0",
     "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
 ]
