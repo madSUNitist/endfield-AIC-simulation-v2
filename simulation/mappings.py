@@ -75,12 +75,12 @@ def get_metadata(component: ComponentType) -> Tuple[Area, List[Tuple[LinkType, V
     
     return area, ports
 
-def get_components(component: ComponentType, comp_id: int) -> Base:
+def get_components(component: ComponentType, comp_id: int, **cfg: object) -> Base:
     match component:
         case ComponentType.DEPOT_ACCESS_DEPOT_LOADER:
-            return DepotLoader(comp_id)
+            return DepotLoader(comp_id, **cfg)  # type: ignore[arg-type]
         case ComponentType.DEPOT_ACCESS_DEPOT_UNLOADER:
-            return DepotUnloader(comp_id)
+            return DepotUnloader(comp_id, **cfg)  # type: ignore[arg-type]
         case ComponentType.DEPOT_ACCESS_PROTOCOL_STASH:
             return ProtocolStash(comp_id)
 
@@ -89,7 +89,7 @@ def get_components(component: ComponentType, comp_id: int) -> Base:
         case ComponentType.LOGISTICS_BELT_CONVERGER:
             return Converger(comp_id)
         case ComponentType.LOGISTICS_BELT_CONVEYOR:
-            return Conveyor(comp_id)
+            return Conveyor(comp_id, **cfg)  # type: ignore[arg-type]
         case ComponentType.LOGISTICS_BELT_ITEM_CONTROL_PORT:
             return ItemControlPort(comp_id)
         case ComponentType.LOGISTICS_BELT_SPLITTER:

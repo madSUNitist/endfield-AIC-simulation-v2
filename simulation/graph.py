@@ -1,4 +1,5 @@
-from typing import Dict, Tuple, Set, List
+from typing import Dict, Tuple, Set, List, Optional
+import heapq
 
 from .units.base import Base
 from .utils import Vec
@@ -11,7 +12,8 @@ class Graph(object):
     components: Dict[Vec, Base]
     order: List[Vec]
 
-    def __init__(self, layout: Layout) -> None:
+    def __init__(self, layout: Layout,
+                 comp_configs: Optional[Dict[Vec, dict]] = None) -> None:
         self.layout = layout
 
         # Pass 1: instantiate components, build cell -> origin reverse lookup
@@ -19,9 +21,10 @@ class Graph(object):
         self.order = []
         comp_map: Dict[int, Vec] = {}
         cell_to_origin: Dict[Vec, Vec] = {}
+        cfgs = comp_configs or {}
 
         for idx, (coord, (comp_type, rotation)) in enumerate(layout.get_all_components()):
-            comp = get_components(comp_type, idx)
+            comp = get_components(comp_type, idx, **cfgs.get(coord, {}))
             comp.component_type = comp_type
             self.components[coord] = comp
             comp_map[comp.id] = coord
@@ -60,40 +63,43 @@ class Graph(object):
                         target_comp.add_link(comp, LinkType.OUTPUT)
                         edges.add(edge)
 
-        # Pass 3: build topological order from terminal nodes backward
+        # Pass 3: forward topological sort (Kahn) with stable ordering
         self._build_order(comp_map)
 
-    def _build_order(self, comp_map: Dict[int, Vec]) -> None:
-        terminals = [coord for coord, comp in self.components.items()
-                     if comp.out_degree == 0]
-
-        visiting: Set[Vec] = set()
-        visited: Set[Vec] = set()
-
-        def dfs(coord: Vec) -> None:
-            if coord in visited:
-                return
-            if coord in visiting:
-                return  # cycle cut
-
-            visiting.add(coord)
+    def tick(self) -> None:
+        for coord in reversed(self.order):
             comp = self.components[coord]
+            comp.fulfill_requests()
+            comp.request_upstream()
 
-            for up in comp.upstreams:
-                up_coord = comp_map.get(up.id)
-                if up_coord is not None:
-                    dfs(up_coord)
+    def _build_order(self, comp_map: Dict[int, Vec]) -> None:
+        in_deg: Dict[Vec, int] = {}
+        for coord, comp in self.components.items():
+            in_deg[coord] = len(comp.upstreams)
 
-            visiting.remove(coord)
-            visited.add(coord)
+        heap: List[Tuple[int, int, Vec]] = []
+        for coord, d in in_deg.items():
+            if d == 0:
+                heap.append((coord.x, coord.y, coord))
+        heapq.heapify(heap)
+
+        while heap:
+            _, _, coord = heapq.heappop(heap)
             self.order.append(coord)
 
-        for t in terminals:
-            if t not in visited:
-                dfs(t)
+            for down in self.components[coord].downstreams:
+                dc = comp_map.get(down.id)
+                if dc is None:
+                    continue
+                if in_deg[dc] > 0:
+                    in_deg[dc] -= 1
+                    if in_deg[dc] == 0:
+                        heapq.heappush(heap, (dc.x, dc.y, dc))
 
-        # sweep remaining nodes not reachable from any terminal (isolated cycles)
-        for coord in self.components:
-            if coord not in visited:
-                dfs(coord)
+            if not heap:
+                remaining = [c for c, d in in_deg.items() if d > 0]
+                if remaining:
+                    pick = min(remaining, key=lambda c: (c.x, c.y))
+                    in_deg[pick] = 0
+                    heapq.heappush(heap, (pick.x, pick.y, pick))
     

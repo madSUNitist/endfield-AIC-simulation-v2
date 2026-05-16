@@ -1,0 +1,10 @@
+{
+    "name": "Belt with Turn",
+    "ticks": 14,
+    "inventory": { "ingot": 9999 },
+    "components": [
+        { "pos": [0, 0], "type": "depot_loader",  "rot": "ROT_0", "item": "ingot" },
+        { "pos": [0, 1], "type": "conveyor",       "rot": "ROT_0", "length": 5 },
+        { "pos": [0, 6], "type": "depot_unloader", "rot": "ROT_0" }
+    ]
+}
