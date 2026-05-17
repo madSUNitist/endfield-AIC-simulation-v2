@@ -2,6 +2,9 @@ from typing import Any, Optional
 from pathlib import Path
 
 from simulation.units.logistics_units.belt.conveyor import Conveyor
+from simulation.units.logistics_units.belt.converger import Converger
+from simulation.units.logistics_units.belt.splitter import Splitter
+from simulation.units.depot_access.protocol_stash import ProtocolStash
 
 
 RENDER_MODES = ("id_type", "type", "id", "binary")
@@ -12,30 +15,44 @@ def render_item(item: Any | None, mode: str) -> str:
         return " " if mode == "binary" else "  .  "
     if mode == "binary":
         return "1"
-    t = str(item.type)[:6]
     s = str(item.id)
+    if mode == "id":
+        return f"#{s}"
+    t = str(item.type)[:4]
     if mode == "id_type":
         return f"{t}#{s}"
     if mode == "type":
         return t
-    if mode == "id":
-        return f"#{s}"
     return f"{t}#{s}"
 
 
 def _pad(s: str, width: int) -> str:
-    if len(s) >= width:
-        return s[:width]
+    if len(s) > width:
+        return s[len(s) - width:]  # keep the rightmost part (ID number)
     return s.center(width)
 
 
 def render_belt(conv: Conveyor, mode: str) -> str:
     width = 8 if mode in ("id_type",) else 6
-    cells: list[str] = []
-    for i in range(conv._length):
-        idx = (conv._ptr - conv._count + conv._length + i) % conv._length
-        cells.append(_pad(render_item(conv._slots[idx], mode), width))
+    cells = [_pad(render_item(conv._slots[i], mode), width) for i in range(conv._length)]
     return "[" + " | ".join(cells) + "]"
+
+
+def render_converger(conv: Converger, mode: str) -> str:
+    width = 8 if mode in ("id_type",) else 6
+    return "[" + _pad(render_item(conv._buffer, mode), width) + "]"
+
+
+def render_splitter(comp: Splitter, mode: str) -> str:
+    width = 8 if mode in ("id_type",) else 6
+    return "[" + _pad(render_item(comp._buffer, mode), width) + "]"
+
+
+def render_stash(comp: ProtocolStash, mode: str) -> str:
+    width = 8 if mode in ("id_type",) else 6
+    buf = _pad(render_item(comp._buffer, mode), width)
+    cnt = comp._inv.count()
+    return f"[{buf}|{cnt:>3d}]"
 
 
 def load_test_case(path: Path) -> dict:

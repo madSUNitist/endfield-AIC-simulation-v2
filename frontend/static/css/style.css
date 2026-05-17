@@ -1,0 +1,176 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #1e1e1e;
+    color: #ccc;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* ── Top bar ─────────────────────────────────────── */
+
+#topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: #2d2d2d;
+    border-bottom: 1px solid #444;
+    flex-shrink: 0;
+}
+
+#topbar select {
+    background: #3a3a3a;
+    color: #ccc;
+    border: 1px solid #555;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+#topbar button {
+    background: #3a3a3a;
+    color: #ccc;
+    border: 1px solid #555;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+}
+
+#topbar button:hover {
+    background: #4a4a4a;
+}
+
+#speed-label {
+    font-size: 12px;
+    min-width: 24px;
+    text-align: center;
+}
+
+#speed-slider {
+    width: 100px;
+    accent-color: #4CAF50;
+}
+
+#info {
+    margin-left: auto;
+    font-size: 12px;
+    font-family: monospace;
+    color: #aaa;
+}
+
+/* ── Main area ───────────────────────────────────── */
+
+#main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ── Palette sidebar ─────────────────────────────── */
+
+#palette {
+    width: 160px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    background: #252525;
+    border-right: 1px solid #444;
+    padding: 4px 0;
+}
+
+.palette-header {
+    padding: 8px 10px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #888;
+    letter-spacing: 0.5px;
+}
+
+.palette-item {
+    padding: 6px 10px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    transition: background 0.15s;
+}
+
+.palette-item:hover {
+    background: #3a3a3a;
+}
+
+.palette-item.active {
+    background: #3a5a3a;
+}
+
+.palette-label {
+    font-weight: 500;
+}
+
+.palette-meta {
+    font-size: 10px;
+    color: #777;
+}
+
+.palette-config {
+    padding: 8px 10px;
+    border-top: 1px solid #444;
+    font-size: 12px;
+}
+
+.palette-config label {
+    display: block;
+    margin: 4px 0;
+    color: #aaa;
+}
+
+.palette-config input {
+    background: #3a3a3a;
+    color: #ccc;
+    border: 1px solid #555;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+/* ── Canvas area ──────────────────────────────────── */
+
+#canvas-container {
+    flex: 1;
+    position: relative;
+    overflow: auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+#canvas {
+    display: block;
+    image-rendering: pixelated;
+}
+
+#tooltip {
+    display: none;
+    position: absolute;
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: monospace;
+    pointer-events: none;
+    white-space: pre;
+    z-index: 10;
+}

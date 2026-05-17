@@ -1,6 +1,6 @@
 # Endfield AIC Simulation (v2)
 
-## Request Flow
+## Old Logic (request flow)
 
 ```mermaid
 sequenceDiagram
@@ -66,126 +66,93 @@ Components are finite state machines. Cache their reachable states so transition
 - Decouple component communication via async non-blocking message passing.
 - Additional communication-layer optimizations.
 
-## Rotation / Direction Reference
+## Direction Reference (Canvas-aligned)
 
-| Rotation | Description |
-| --- | --- |
-| `ROT_0` | No rotation |
-| `ROT_1` | Clockwise 90° |
-| `ROT_2` | Clockwise 180° |
-| `ROT_3` | Clockwise 270° |
+The coordinate system matches Canvas pixel space: **+x is right, +y is down**.
 
-```plaintext
-(0, 0)
- +-x-(+1, 0)-------> x
- |   x (+2, +1)
- |     x (+3, +2)
- |       x (+4, +3)
- |
- |
- |
- |
- v
- y
+| Direction | Vector | Description |
+|-----------|--------|-------------|
+| `UP` | `(0, -1)` | Negative y (screen up) |
+| `DOWN` | `(0, +1)` | Positive y (screen down) |
+| `LEFT` | `(-1, 0)` | Negative x (screen left) |
+| `RIGHT` | `(+1, 0)` | Positive x (screen right) |
+
+This eliminates y-flip in the renderer. All Direction ↔ Rotation math uses 90° clockwise increments.
+
+## Two-Phase Tick Loop
+
+Two passes per tick, using the topologically-sorted graph order:
+
+```python
+for coord in reversed(graph.order):   # Phase 1: sinks → sources
+    comp.phase1()                      #   fulfil_requests() + request_upstream()
+
+for coord in graph.order:             # Phase 2: sources → sinks
+    comp.phase2()                      #   forward zero-tick passthrough (no-op by default)
 ```
 
-| Direction | Description |
-| --- | --- |
-| `RIGHT` | Facing right of local +y, `(-1, 0)` |
-| `LEFT` | Facing left of local +y, `(+1, 0)` |
-| `UP` | Facing forward along local +y, `(0, +1)` |
-| `DOWN` | Facing backward along local +y, `(0, -1)` |
+**Phase 1** (reverse order, sinks first):  
+Each component fulfils pending pull requests (hands items downstream) then requests new items from upstream.
 
-## Implementation
+**Phase 2** (forward order, sources first):  
+Components that received items in Phase 1 can forward them in the same tick (zero-tick passthrough). The `Base` default is no-op; `ProtocolStash` overrides this with immediate downstream forwarding.
 
-### Commands
+## Bilateral Port Matching
 
-```bash
-uv sync                        # install deps
-uv run mypy .                  # static type check
-uv run pytest -v               # run tests
-uv run python tools/runner.py --all --render type   # run all JSON test cases
-uv run python tools/runner.py tests/test_cases/belt_line.json  # single case
-```
+Connections require a **compatible counter-port** on the target component. If component A has an OUTPUT pointing at component B, B must have an INPUT pointing back at A for the link to be created. This prevents one-way connections (e.g. unloader → unloader).
 
-### Project Structure (v3)
+The check (`_has_compatible_counterpart` in `graph.py`):
+1.  Finds the target component at the port's direction neighbour.
+2.  Iterates the target's ports, looking for the opposite `LinkType`.
+3.  Verifies the counter-port's target cell falls within our occupied cells.
 
-```
-simulation/
-├── _enums.py        Direction, Rotation, ComponentType, LinkType
-├── _types.py        Coverage, RelativeOffset type aliases
-├── _id_gen.py       IDGen — monotonic ID allocator
-├── factory.py       Factory — builds Layout + Graph from JSON config
-├── layout.py        Layout — grid occupancy, overlap detection
-├── graph.py         Graph — port-based connections, Kahn topological sort, tick
-├── mappings.py      Metadata lookup (coverage, ports), component factory
-├── items/
-│   ├── item.py      Item (id + type)
-│   ├── itemstack.py ItemStack (typed stack with capacity)
-│   └── inventory.py Inventory (slot array, push/pop by type, defaults prefill)
-├── units/
-│   ├── base.py      Base(ABC) — upstreams/downstreams, pull_requests, tick hooks
-│   ├── depot_access/  DepotLoader(sink→inv), DepotUnloader(source→inv), ProtocolStash
-│   └── logistics_units/belt/  Conveyor, Splitter, Converger, BeltBridge, ItemControlPort
-└── utils/
-    ├── vec.py       Vec(x, y) with rotate/towards, __hash__/__eq__
-    └── area.py      Area coverage rectangle
-assets/unit_metadata.json
-tests/
-├── _view.py              Belt rendering helpers
-├── test_cases/*.json     JSON test case definitions
-└── test_conveyor.py      pytest test suite
-tools/
-└── runner.py        CLI runner using Factory + tests._view
-```
+## Conveyor JSON Format
 
-### Tick Loop
-
-Single-pass reverse-topological traversal (pull model):
-
-```
-for coord in reversed(graph.order):   # sinks → sources
-    comp.fulfill_requests()            # give items to downstream pullers
-    comp.request_upstream()            # register pull on upstream, advance ptr
-```
-
-Components are auto-connected via port direction matching + rotation. No manual wiring.
-
-### Components
-
-| Component | Inputs | Outputs | Behavior |
-|-----------|--------|---------|----------|
-| Conveyor | 1 max | 1 max | Circular buffer, length param, ptr advances each tick |
-| DepotLoader | 0 | ≥1 | Pop items from global Inventory by type |
-| DepotUnloader | ≥1 | 0 | Push received items to global Inventory |
-| Splitter | 1 | 3 | Distribute to multiple outputs |
-| Converger | 3 | 1 | Merge from multiple inputs |
-
-### Conveyor Internals
-
-```
-_slots: List[Optional[Item]]     fixed-length circular buffer
-_ptr: int                         write position, +1 per tick
-_count: int                       current item count
-
-fulfill_requests():  tail = (_ptr - _count + L) % L, pop → downstream
-request_upstream():  if space → upstream.add_pull(self); _ptr += 1
-_accept_item(item):  slot = (_ptr - 1 + L) % L, place item
-
-get_snapshot() → tail→head linear order (for rendering)
-```
-
-### JSON Test Case Format
+Conveyors use **path-based placement** instead of `pos`/`rot`:
 
 ```json
 {
-    "name": "Loader Belt Unloader",
-    "ticks": 20,
-    "inventory": { "ore": 9999 },
-    "components": [
-        { "pos": [0, 0], "type": "depot_loader",  "rot": "ROT_0", "item": "ore" },
-        { "pos": [0, 1], "type": "conveyor",       "rot": "ROT_0", "length": 4 },
-        { "pos": [0, 5], "type": "depot_unloader", "rot": "ROT_0" }
-    ]
+    "type": "conveyor",
+    "path": [[0, 0], [2, 0], [2, 1]],
+    "direction_in": "up",
+    "direction_out": "down"
 }
 ```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `path` | ✓ | Polyline waypoints; expanded into cell-by-cell offsets |
+| `direction_in` | ✓ | Direction the input port faces (must point toward upstream) |
+| `direction_out` | ✓ | Direction the output port faces (must point toward downstream) |
+
+The origin is `path[0]`; `pos` and `rot` are ignored.
+
+## Additional Components
+
+| Component | Inputs | Outputs | Behaviour |
+|-----------|--------|---------|-----------|
+| `ProtocolStash` | ≥1 | ≥1 | Single-slot buffer + Inventory(6×50). Zero-tick passthrough: if a downstream can accept, items skip the buffer entirely. Round-robin downstream selection. |
+
+## Frontend
+
+A web-based simulation viewer lives in `frontend/`.
+
+| Layer | Files |
+|-------|-------|
+| **Backend** | `frontend/server.py` — FastAPI serving REST API at `/api/*` |
+| **Frontend** | `frontend/static/ts/` — TypeScript → compiled JS, canvas-based viewer |
+| **API endpoints** | `/api/cases`, `/api/component_types`, `/api/load`, `/api/layout`, `/api/tick`, `/api/reset` |
+
+See `frontend/README.md` for setup and architecture details.
+
+## Developer Quick Reference
+
+| Command | Action |
+|---|---|
+| `uv sync` | Install Python deps |
+| `uv run mypy .` | Static type checking |
+| `uv run pytest` | Run all tests |
+| `uv run pytest -k test_name` | Run a single test |
+| `uv run python frontend/server.py` | Start FastAPI dev server |
+| `cd frontend && npm run build` | Compile TypeScript → JS |
+| `uv run pdoc simulation -o docs` | Regenerate API docs |

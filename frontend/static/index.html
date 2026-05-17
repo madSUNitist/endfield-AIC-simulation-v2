@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>simulation-v3</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+    <!-- Top bar -->
+    <div id="topbar">
+        <select id="case-select"></select>
+        <button id="btn-step" title="Step (→)">⏭</button>
+        <button id="btn-play" title="Play/Pause (Space)">▶</button>
+        <button id="btn-reset" title="Reset (R)">⟳</button>
+        <span id="speed-label">1x</span>
+        <input type="range" id="speed-slider" min="1" max="20" value="1" step="1">
+        <span id="info">Tick: 0</span>
+    </div>
+    <!-- Main area -->
+    <div id="main">
+        <div id="palette"></div>
+        <div id="canvas-container">
+            <canvas id="canvas"></canvas>
+            <div id="tooltip"></div>
+        </div>
+    </div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

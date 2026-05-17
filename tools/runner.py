@@ -15,7 +15,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from simulation.factory import Factory
 from simulation._enums import ComponentType as CT
 from simulation.units.logistics_units.belt.conveyor import Conveyor
-from tests._view import render_belt, RENDER_MODES, load_test_case
+from simulation.units.logistics_units.belt.converger import Converger
+from simulation.units.logistics_units.belt.splitter import Splitter
+from simulation.units.depot_access.protocol_stash import ProtocolStash
+from tests._view import render_belt, render_converger, render_splitter, render_stash, RENDER_MODES, load_test_case
 
 
 def run_single(path: Path, render: str | None = None) -> None:
@@ -27,14 +30,29 @@ def run_single(path: Path, render: str | None = None) -> None:
     name = cfg.get("name", path.stem)
 
     convs: list[Conveyor] = []
-    for comp in f.graph.components.values():
+    cvgs: list[tuple[Converger, int, int]] = []
+    splts: list[tuple[Splitter, int, int]] = []
+    stshs: list[tuple[ProtocolStash, int, int]] = []
+    for coord, comp in f.graph.components.items():
         if isinstance(comp, Conveyor):
             convs.append(comp)
+        elif isinstance(comp, Converger):
+            cvgs.append((comp, coord.x, coord.y))
+        elif isinstance(comp, Splitter):
+            splts.append((comp, coord.x, coord.y))
+        elif isinstance(comp, ProtocolStash):
+            stshs.append((comp, coord.x, coord.y))
 
     print(f"\n=== {name} ===  render={mode}")
     print(f"  init   ", end="")
     for comp in convs:
         print(f"  {render_belt(comp, mode)}", end="")
+    for comp, _, _ in cvgs:
+        print(f"  cvrg {render_converger(comp, mode)}", end="")
+    for comp, _, _ in splts:
+        print(f"  splt {render_splitter(comp, mode)}", end="")
+    for comp, _, _ in stshs:
+        print(f"  stash{render_stash(comp, mode)}", end="")
     print()
 
     for t in range(cfg.get("ticks", 30)):
@@ -42,6 +60,12 @@ def run_single(path: Path, render: str | None = None) -> None:
         out = f"  tick={t:>3d}"
         for comp in convs:
             out += f"  {render_belt(comp, mode)}"
+        for comp, _, _ in cvgs:
+            out += f"  cvrg {render_converger(comp, mode)}"
+        for comp, _, _ in splts:
+            out += f"  splt {render_splitter(comp, mode)}"
+        for comp, _, _ in stshs:
+            out += f"  stash{render_stash(comp, mode)}"
         print(out)
 
     for coord, comp in f.graph.components.items():

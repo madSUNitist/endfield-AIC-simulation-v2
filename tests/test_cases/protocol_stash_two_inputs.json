@@ -1,0 +1,14 @@
+{
+    "name": "Protocol Stash Two Inputs",
+    "ticks": 400,
+    "inventory": { "ore": 9999, "copper": 9999 },
+    "components": [
+        { "pos": [-1, -1], "type": "depot_loader",  "rot": "ROT_0", "item": "ore" },
+        { "type": "conveyor", "path": [[0,0],[2,0],[2,1]], "direction_in": "up", "direction_out": "down" },
+        { "pos": [ 3, -1], "type": "depot_loader",  "rot": "ROT_0", "item": "copper" },
+        { "type": "conveyor", "path": [[4,0],[4,1]], "direction_in": "up", "direction_out": "down" },
+        { "pos": [ 2,  2], "type": "protocol_stash", "rot": "ROT_0" },
+        { "path": [[2,5],[2,6]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+        { "pos": [ 1,  7], "type": "depot_unloader",  "rot": "ROT_0" }
+    ]
+}

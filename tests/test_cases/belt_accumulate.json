@@ -3,8 +3,8 @@
     "ticks": 10,
     "inventory": { "ore": 5000 },
     "components": [
-        { "pos": [0, 0], "type": "depot_loader",  "rot": "ROT_0", "item": "ore" },
-        { "pos": [0, 1], "type": "conveyor",       "rot": "ROT_0", "length": 3 },
-        { "pos": [0, 4], "type": "depot_unloader", "rot": "ROT_0" }
+        { "pos": [-1, 0], "type": "depot_loader",  "rot": "ROT_0", "item": "ore" },
+        { "path": [[0,1],[0,3]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+        { "pos": [-1, 4], "type": "depot_unloader", "rot": "ROT_0" }
     ]
 }

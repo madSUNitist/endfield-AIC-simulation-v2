@@ -5,11 +5,17 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "fastapi>=0.136.1",
     "graphviz>=0.21",
     "mypy>=2.1.0",
+    "pdoc>=16.0.0",
     "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
+    "uvicorn>=0.47.0",
 ]
+
+[tool.pdoc]
+docformat = "google"
 
 [[tool.uv.index]]
 url = "https://mirrors.aliyun.com/pypi/simple"
