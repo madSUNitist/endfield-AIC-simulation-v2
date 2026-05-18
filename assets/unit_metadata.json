@@ -9,9 +9,7 @@
         "depot-unloader": {
             "coverage": [3, 1], 
             "ports": [
-                {"type": "input", "offset": [0, 0], "direction": "up"},
-                {"type": "input", "offset": [1, 0], "direction": "up"},
-                {"type": "input", "offset": [2, 0], "direction": "up"}
+                {"type": "input", "offset": [1, 0], "direction": "up"}    
             ]
         }, 
         "protocol-stash": {
