@@ -15,8 +15,10 @@ class DepotLoader(Base):
 
     def __init__(self, comp_id: int, *, id_gen: IDGen,
                  inventory: Inventory, item_type: object) -> None:
-        """Args:
-            comp_id: Unique numeric identifier for this component.
+        """Initialise a depot loader.
+
+        Args:
+            comp_id: Unique numeric identifier.
             id_gen: Generator for unique item IDs.
             inventory: The source inventory to pull items from.
             item_type: The item type this loader handles.

@@ -5,18 +5,20 @@ const ITEM = CELL / 2;
 const ITEM_OFS = (CELL - ITEM) / 2;
 const GRID_LINE = "#ddd";
 const BG = "#fafafa";
+const MIN_ZOOM = 0.25;
+const MAX_ZOOM = 4;
 // ── Pan / zoom state ───────────────────────────────────────────────
 let panX = 0;
 let panY = 0;
 let zoom = 1;
-let baseScale = 1;
 // ── State (set by caller each frame) ───────────────────────────────
 let layoutComps = [];
 let edges = [];
-let viewport = { x0: 0, y0: 0, w: 1, h: 1 };
 let stateMap = new Map();
 let prevStateMap = new Map();
 let selectedId = null;
+// ── Ghost (placement preview) ───────────────────────────────────────
+let ghostData = null;
 // ── Animation state (timer-based interpolation) ─────────────────────
 let animStartTime = 0;
 let animDuration = 400;
@@ -34,11 +36,10 @@ export function init(cvs, tip) {
         requestAnimationFrame(frame);
     });
 }
-/** Update layout data (components, edges, viewport). */
-export function setData(comps, es, vp) {
+/** Update layout data (components, edges). */
+export function setData(comps, es, _vp) {
     layoutComps = comps;
     edges = es;
-    viewport = vp;
 }
 /** Update per-tick state and start a new animation segment. */
 export function setState(comps) {
@@ -57,16 +58,15 @@ export function setAnimDuration(ms) {
 export function setSelected(id) {
     selectedId = id;
 }
-/** Recompute canvas dimensions to fit the viewport. */
+/** Set ghost (placement preview) data (null = clear). */
+export function setGhost(data) {
+    ghostData = data;
+}
+/** Resize canvas to fill its container. */
 export function resize() {
-    const cw = (viewport.w + 2) * CELL;
-    const ch = (viewport.h + 2) * CELL;
     const parent = canvas.parentElement;
-    baseScale = Math.min(parent.clientWidth / cw, parent.clientHeight / ch, 1);
-    canvas.width = cw * baseScale;
-    canvas.height = ch * baseScale;
-    canvas.style.width = `${cw * baseScale}px`;
-    canvas.style.height = `${ch * baseScale}px`;
+    canvas.width = parent.clientWidth;
+    canvas.height = parent.clientHeight;
     draw();
 }
 // ── Pan / zoom API ─────────────────────────────────────────────────
@@ -77,7 +77,7 @@ export function pan(dx, dy) {
 }
 export function handleWheel(deltaY, cx, cy) {
     const factor = deltaY > 0 ? 0.9 : 1.1;
-    const newZoom = Math.max(0.1, Math.min(10, zoom * factor));
+    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * factor));
     panX = cx + (panX - cx) * newZoom / zoom;
     panY = cy + (panY - cy) * newZoom / zoom;
     zoom = newZoom;
@@ -90,18 +90,18 @@ export function resetView() {
     draw();
 }
 // ── Coordinate helpers ─────────────────────────────────────────────
+const _HIDDEN = 0; // eslint-disable-line
+/** World cell → drawing space (each cell = CELL px at zoom=1). */
 function toCanvas(wx, wy) {
-    const mx = viewport.x0 - 1;
-    const my = viewport.y0 - 1;
-    return [
-        (wx - mx) * CELL,
-        (wy - my) * CELL,
-    ];
+    return [wx * CELL, wy * CELL];
 }
 function lerp(a, b, t) {
     return a + (b - a) * t;
 }
-// ── Path angle lookup ──────────────────────────────────────────────
+/** Canvas pixel → drawing coordinate. */
+function pixelToDraw(px, py) {
+    return [(px - panX) / zoom, (py - panY) / zoom];
+}
 // ── Main draw ──────────────────────────────────────────────────────
 export function draw() {
     const now = performance.now();
@@ -110,35 +110,40 @@ export function draw() {
         : 1;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.setTransform(baseScale * zoom, 0, 0, baseScale * zoom, panX, panY);
-    const w = (viewport.w + 2) * CELL;
-    const h = (viewport.h + 2) * CELL;
-    drawGrid(w, h);
+    ctx.setTransform(zoom, 0, 0, zoom, panX, panY);
+    drawGrid();
     drawEdges();
     drawComponents(progress);
+    drawGhost();
 }
-function drawGrid(w, h) {
+// ── Grid (dynamic visible range) ───────────────────────────────────
+function drawGrid() {
+    const [dx0, dy0] = pixelToDraw(0, 0);
+    const [dx1, dy1] = pixelToDraw(canvas.width, canvas.height);
     ctx.fillStyle = BG;
-    ctx.fillRect(0, 0, w, h);
+    ctx.fillRect(dx0, dy0, dx1 - dx0, dy1 - dy0);
     ctx.strokeStyle = GRID_LINE;
     ctx.lineWidth = 1;
-    const cols = viewport.w + 2;
-    const rows = viewport.h + 2;
-    for (let i = 0; i <= cols; i++) {
+    const col0 = Math.floor(dx0 / CELL);
+    const col1 = Math.ceil(dx1 / CELL);
+    const row0 = Math.floor(dy0 / CELL);
+    const row1 = Math.ceil(dy1 / CELL);
+    for (let i = col0; i <= col1; i++) {
         const x = i * CELL;
         ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
+        ctx.moveTo(x, dy0);
+        ctx.lineTo(x, dy1);
         ctx.stroke();
     }
-    for (let i = 0; i <= rows; i++) {
+    for (let i = row0; i <= row1; i++) {
         const y = i * CELL;
         ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
+        ctx.moveTo(dx0, y);
+        ctx.lineTo(dx1, y);
         ctx.stroke();
     }
 }
+// ── Edges ──────────────────────────────────────────────────────────
 function drawEdges() {
     ctx.strokeStyle = "#666";
     ctx.lineWidth = 2;
@@ -175,13 +180,13 @@ function drawEdges() {
         ctx.fill();
     }
 }
+// ── Components ─────────────────────────────────────────────────────
 function drawComponents(progress) {
-    const compById = new Map(layoutComps.map(c => [c.id, c]));
     for (const comp of layoutComps) {
         const st = stateMap.get(comp.id);
         drawComponentCell(comp, st);
         if (st) {
-            drawItems(comp, st, compById, progress);
+            drawItems(comp, st, progress);
         }
     }
 }
@@ -230,25 +235,26 @@ function drawComponentCell(comp, st) {
     ctx.textBaseline = "middle";
     ctx.fillText(label, lx + HALF, ly + HALF);
     for (const port of comp.ports) {
-        drawPortArrow(port.cell, port.dir);
+        drawPortArrow(port.cell, port.dir, port.type === "input");
     }
 }
-function drawPortArrow(cell, dir) {
+function drawPortArrow(cell, dir, isInput) {
     const [cx, cy] = toCanvas(cell[0], cell[1]);
     const px = cx + HALF + dir[0] * HALF * 0.7;
     const py = cy + HALF + dir[1] * HALF * 0.7;
+    const sd = isInput ? [-dir[0], -dir[1]] : dir;
     const al = 8;
     ctx.fillStyle = "#444";
     ctx.beginPath();
-    ctx.moveTo(px + dir[0] * al, py + dir[1] * al);
-    ctx.lineTo(px - dir[0] * al - dir[1] * al * 0.4, py + dir[1] * al - dir[0] * al * 0.4);
-    ctx.lineTo(px - dir[0] * al + dir[1] * al * 0.4, py + dir[1] * al + dir[0] * al * 0.4);
+    ctx.moveTo(px + sd[0] * al, py + sd[1] * al);
+    ctx.lineTo(px - sd[0] * al - sd[1] * al * 0.4, py - sd[1] * al - sd[0] * al * 0.4);
+    ctx.lineTo(px - sd[0] * al + sd[1] * al * 0.4, py - sd[1] * al + sd[0] * al * 0.4);
     ctx.closePath();
     ctx.fill();
 }
-function drawItems(comp, st, compById, progress) {
+// ── Items ──────────────────────────────────────────────────────────
+function drawItems(comp, st, progress) {
     if (!st.slot_map) {
-        // Non-conveyor (buffer)
         if (st.buffer) {
             const cells = comp.cells;
             const cx = cells.reduce((s, c) => s + c[0], 0) / cells.length;
@@ -262,7 +268,6 @@ function drawItems(comp, st, compById, progress) {
     const cells = comp.cells;
     if (cells.length === 0)
         return;
-    // Entry / exit directions from component metadata
     const DIR_VEC = {
         up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0],
     };
@@ -270,18 +275,13 @@ function drawItems(comp, st, compById, progress) {
         ? DIR_VEC[comp.direction_in] ?? [0, 0] : [0, 0];
     const outVec = comp.direction_out
         ? DIR_VEC[comp.direction_out] ?? [0, 0] : [0, 0];
-    // Build set of current item IDs
     const currIds = new Set();
-    const currByCell = new Map();
     for (const cell of cells) {
         const key = `${cell[0]},${cell[1]}`;
         const item = st.slot_map[key];
-        if (item) {
+        if (item)
             currIds.add(item.id);
-            currByCell.set(key, item);
-        }
     }
-    // Clip to conveyor cells
     ctx.save();
     ctx.beginPath();
     for (const c of cells) {
@@ -289,7 +289,6 @@ function drawItems(comp, st, compById, progress) {
         ctx.rect(cx, cy, CELL, CELL);
     }
     ctx.clip();
-    // ── Leaving items (in prev, not in curr) ────────────────
     if (prevSt && prevSt.slot_map && progress < 1) {
         for (const [pk, pv] of Object.entries(prevSt.slot_map)) {
             if (!pv || currIds.has(pv.id))
@@ -300,13 +299,11 @@ function drawItems(comp, st, compById, progress) {
             drawItemBox(lerp(fromX, toX, progress), lerp(fromY, toY, progress), pv);
         }
     }
-    // ── Entering & moving items (in curr) ───────────────────
     for (const cell of cells) {
         const key = `${cell[0]},${cell[1]}`;
         const item = st.slot_map[key];
         if (!item)
             continue;
-        // Match item by ID in prev
         let fromPos = null;
         if (prevSt && prevSt.slot_map) {
             for (const [pk, pv] of Object.entries(prevSt.slot_map)) {
@@ -320,15 +317,21 @@ function drawItems(comp, st, compById, progress) {
         const [toX, toY] = toCanvas(cell[0], cell[1]);
         let drawX, drawY;
         if (fromPos && progress < 1) {
-            // Moving item
             drawX = lerp(fromPos[0], toX, progress);
             drawY = lerp(fromPos[1], toY, progress);
         }
-        else if (progress < 1 && cell === cells[0] && cells.length >= 2) {
-            // Entering item at head: slide from upstream direction
-            const [extX, extY] = toCanvas(cell[0] + inVec[0], cell[1] + inVec[1]);
-            drawX = lerp(extX, toX, progress);
-            drawY = lerp(extY, toY, progress);
+        else if (progress < 1) {
+            const idx = cells.indexOf(cell);
+            if (idx > 0) {
+                const [prevX, prevY] = toCanvas(cells[idx - 1][0], cells[idx - 1][1]);
+                drawX = lerp(prevX, toX, progress);
+                drawY = lerp(prevY, toY, progress);
+            }
+            else {
+                const [extX, extY] = toCanvas(cell[0] + inVec[0], cell[1] + inVec[1]);
+                drawX = lerp(extX, toX, progress);
+                drawY = lerp(extY, toY, progress);
+            }
         }
         else {
             drawX = toX;
@@ -353,17 +356,10 @@ function drawItemBox(cx, cy, item) {
 }
 // ── Screen → world cell lookup ─────────────────────────────────────
 export function screenToCell(sx, sy) {
-    const lx = (sx - panX) / (baseScale * zoom);
-    const ly = (sy - panY) / (baseScale * zoom);
-    const mx = viewport.x0 - 1;
-    const my = viewport.y0 - 1;
-    const gx = mx + lx / CELL;
-    const gy = my + ly / CELL;
-    const cx = Math.floor(gx);
-    const cy = Math.floor(gy);
-    if (gx - cx > 0.99 || gy - cy > 0.99)
-        return null;
-    return [cx, cy];
+    const [dx, dy] = pixelToDraw(sx, sy);
+    const gx = dx / CELL;
+    const gy = dy / CELL;
+    return [Math.floor(gx), Math.floor(gy)];
 }
 export function findComponentAt(cell) {
     for (const comp of layoutComps) {
@@ -378,7 +374,139 @@ export function findComponentAt(cell) {
 export function findComponentById(id) {
     return layoutComps.find(c => c.id === id) ?? null;
 }
-export function getCanvasSize() {
-    return [(viewport.w + 2) * CELL, (viewport.h + 2) * CELL];
+// ── Ghost rendering (placement preview) ────────────────────────────
+const DIR_VEC_G = {
+    up: [0, -1],
+    down: [0, 1],
+    left: [-1, 0],
+    right: [1, 0],
+};
+function drawGhost() {
+    if (!ghostData)
+        return;
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    const { cells, color, pathLine, altPathLine, directionIn, directionOut, startCell, ghostPorts, } = ghostData;
+    // Draw ghost cells
+    const cellSet = new Set();
+    for (const c of cells) {
+        const [cx, cy] = toCanvas(c[0], c[1]);
+        ctx.fillStyle = color + "60";
+        ctx.fillRect(cx, cy, CELL, CELL);
+        cellSet.add(`${c[0]},${c[1]}`);
+    }
+    // Draw cell borders
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (const c of cells) {
+        const [cx, cy] = toCanvas(c[0], c[1]);
+        if (!cellSet.has(`${c[0]},${c[1] - 1}`)) {
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + CELL, cy);
+        }
+        if (!cellSet.has(`${c[0]},${c[1] + 1}`)) {
+            ctx.moveTo(cx, cy + CELL);
+            ctx.lineTo(cx + CELL, cy + CELL);
+        }
+        if (!cellSet.has(`${c[0] - 1},${c[1]}`)) {
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx, cy + CELL);
+        }
+        if (!cellSet.has(`${c[0] + 1},${c[1]}`)) {
+            ctx.moveTo(cx + CELL, cy);
+            ctx.lineTo(cx + CELL, cy + CELL);
+        }
+    }
+    ctx.stroke();
+    // Draw path polyline (conveyor mode)
+    if (pathLine && pathLine.length >= 2) {
+        const confirmedLen = ghostData.confirmedPathLength ?? 0;
+        if (confirmedLen >= 2) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            const [sx, sy] = toCanvas(pathLine[0][0], pathLine[0][1]);
+            ctx.moveTo(sx + HALF, sy + HALF);
+            for (let i = 1; i < Math.min(confirmedLen, pathLine.length); i++) {
+                const [ex, ey] = toCanvas(pathLine[i][0], pathLine[i][1]);
+                ctx.lineTo(ex + HALF, ey + HALF);
+            }
+            ctx.stroke();
+        }
+        if (confirmedLen < pathLine.length) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            const startIdx = Math.max(0, confirmedLen - 1);
+            const [sx, sy] = toCanvas(pathLine[startIdx][0], pathLine[startIdx][1]);
+            ctx.moveTo(sx + HALF, sy + HALF);
+            for (let i = startIdx + 1; i < pathLine.length; i++) {
+                const [ex, ey] = toCanvas(pathLine[i][0], pathLine[i][1]);
+                ctx.lineTo(ex + HALF, ey + HALF);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+    }
+    // Draw alternative corner path (dashed, lighter)
+    if (altPathLine && altPathLine.length >= 2) {
+        ctx.strokeStyle = "#666";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        const [sx, sy] = toCanvas(altPathLine[0][0], altPathLine[0][1]);
+        ctx.moveTo(sx + HALF, sy + HALF);
+        for (let i = 1; i < altPathLine.length; i++) {
+            const [ex, ey] = toCanvas(altPathLine[i][0], altPathLine[i][1]);
+            ctx.lineTo(ex + HALF, ey + HALF);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+    // Draw component port arrows (for simple components)
+    if (ghostPorts) {
+        for (const port of ghostPorts) {
+            const dirVec = DIR_VEC_G[port.dir] ?? [0, 0];
+            drawGhostArrow(port.cell, dirVec, color, port.type === "input");
+        }
+    }
+    // Draw conveyor direction arrows
+    if (directionIn && startCell) {
+        const inVec = DIR_VEC_G[directionIn] ?? [0, -1];
+        drawGhostArrow(startCell, inVec, color, true);
+    }
+    if (directionOut) {
+        let outCell;
+        if (pathLine && pathLine.length >= 2) {
+            outCell = pathLine[pathLine.length - 1];
+        }
+        else if (cells.length >= 1) {
+            outCell = cells[cells.length - 1];
+        }
+        else {
+            ctx.restore();
+            return;
+        }
+        const outVec = DIR_VEC_G[directionOut] ?? [0, 1];
+        drawGhostArrow(outCell, outVec, color, false);
+    }
+    ctx.restore();
+}
+function drawGhostArrow(cell, dir, color, isInput) {
+    const [cx, cy] = toCanvas(cell[0], cell[1]);
+    const px = cx + HALF + dir[0] * HALF * 0.6;
+    const py = cy + HALF + dir[1] * HALF * 0.6;
+    const sd = isInput ? [-dir[0], -dir[1]] : dir;
+    const al = 10;
+    ctx.fillStyle = isInput ? "#4CAF50" : "#f44336";
+    ctx.beginPath();
+    ctx.moveTo(px + sd[0] * al, py + sd[1] * al);
+    ctx.lineTo(px - sd[0] * al - sd[1] * al * 0.5, py - sd[1] * al - sd[0] * al * 0.5);
+    ctx.lineTo(px - sd[0] * al + sd[1] * al * 0.5, py - sd[1] * al + sd[0] * al * 0.5);
+    ctx.closePath();
+    ctx.fill();
 }
 //# sourceMappingURL=renderer.js.map

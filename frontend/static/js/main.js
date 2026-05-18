@@ -1,52 +1,76 @@
-import { fetchCases, fetchComponentTypes, loadCase, sendLayout, tick, resetSim, } from "./api.js";
+import { fetchComponentTypes, sendLayout, tick, resetSim, fetchBlank, saveBlueprint, loadBlueprint as loadBlueprintApi, } from "./api.js";
 import * as Renderer from "./renderer.js";
 import * as Palette from "./palette.js";
+import * as PlacementController from "./placement.js";
 // ── State ──────────────────────────────────────────────────────────
 let autoPlaying = false;
 let tickInterval = 2000;
-let placements = [];
+let nextTickTime = 0;
+let pendingInterval = null;
 let inventory = { ore: 9999 };
 let selectedCompId = null;
 let wasDragged = false;
 let pointerDownPos = { x: 0, y: 0 };
 // DOM refs
-let caseSelect;
 let speedSlider;
 let speedLabel;
 let infoEl;
+let blueprintInput;
 // ── Init ───────────────────────────────────────────────────────────
 async function init() {
     const canvas = document.getElementById("canvas");
     const tooltipEl = document.getElementById("tooltip");
     infoEl = document.getElementById("info");
-    caseSelect = document.getElementById("case-select");
     speedSlider = document.getElementById("speed-slider");
     speedLabel = document.getElementById("speed-label");
+    blueprintInput = document.getElementById("blueprint-input");
     Renderer.init(canvas, tooltipEl);
-    Palette.init(document.getElementById("palette"), () => { });
-    const cases = await fetchCases();
-    for (const c of cases) {
-        const opt = document.createElement("option");
-        opt.value = c;
-        opt.textContent = c;
-        caseSelect.appendChild(opt);
-    }
+    PlacementController.init(onPlacementsChanged);
+    Palette.init(document.getElementById("palette"), (type) => {
+        if (type) {
+            stopAutoPlay();
+            selectedCompId = null;
+            Renderer.setSelected(null);
+            PlacementController.selectType(type);
+        }
+        else {
+            PlacementController.cancel();
+        }
+    }, onInventoryChanged);
+    // Load palette metadata for ghost rendering
     const types = await fetchComponentTypes();
     Palette.setPaletteItems(types);
-    if (cases.length > 0) {
-        caseSelect.value = cases[0];
-        await loadAndRender(cases[0]);
+    const colorMap = {};
+    const metaMap = {};
+    for (const t of types) {
+        colorMap[t.type] = t.color;
+        metaMap[t.type] = { coverage: t.coverage, ports: t.ports };
     }
-    caseSelect.addEventListener("change", async () => {
-        stopAutoPlay();
-        await loadAndRender(caseSelect.value);
-    });
+    PlacementController.setTypeColors(colorMap);
+    PlacementController.setTypeMeta(metaMap);
+    // Start with blank map
+    const blank = await fetchBlank();
+    await applyLoadResponse(blank);
     speedSlider.addEventListener("input", () => {
         const val = parseInt(speedSlider.value);
-        tickInterval = 2000 / val;
+        const newInterval = 2000 / val;
         speedLabel.textContent = `${val}x`;
+        // Adust the pending interval and rescale the next-tick timer
+        pendingInterval = newInterval;
+        if (autoPlaying && nextTickTime > 0) {
+            const now = performance.now();
+            const remaining = Math.max(0, nextTickTime - now);
+            nextTickTime = now + remaining * tickInterval / newInterval;
+        }
+    });
+    speedSlider.addEventListener("change", () => {
+        if (pendingInterval !== null) {
+            tickInterval = pendingInterval;
+            pendingInterval = null;
+        }
     });
     document.addEventListener("keydown", onKey);
+    // Mouse events
     canvas.addEventListener("mousedown", (e) => {
         pointerDownPos = { x: e.clientX, y: e.clientY };
         wasDragged = false;
@@ -69,7 +93,15 @@ async function init() {
             wasDragged = false;
             return;
         }
-        await onCanvasClick(e, canvas);
+        await onCanvasClick(e, canvas, 0);
+    });
+    canvas.addEventListener("contextmenu", async (e) => {
+        e.preventDefault();
+        if (wasDragged) {
+            wasDragged = false;
+            return;
+        }
+        await onCanvasClick(e, canvas, 2);
     });
     canvas.addEventListener("wheel", (e) => {
         e.preventDefault();
@@ -78,21 +110,54 @@ async function init() {
         const cy = (e.clientY - rect.top) * (canvas.height / rect.height);
         Renderer.handleWheel(e.deltaY, cx, cy);
     }, { passive: false });
-    canvas.addEventListener("mouseleave", () => { tooltipEl.style.display = "none"; });
+    canvas.addEventListener("mouseleave", () => {
+        tooltipEl.style.display = "none";
+        PlacementController.onHover(null);
+    });
     document.getElementById("btn-step").addEventListener("click", () => stepTick());
     document.getElementById("btn-play").addEventListener("click", () => toggleAutoPlay());
     document.getElementById("btn-reset").addEventListener("click", () => resetAndRender());
+    document.getElementById("btn-save").addEventListener("click", () => onSave());
+    document.getElementById("btn-load").addEventListener("click", () => blueprintInput.click());
+    blueprintInput.addEventListener("change", async () => {
+        const file = blueprintInput.files?.[0];
+        if (!file)
+            return;
+        try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+            if (Array.isArray(data)) {
+                const res = await loadBlueprintApi(data);
+                if (res.ok) {
+                    blueprintInput.value = "";
+                    PlacementController.cancel();
+                    Palette.clearSelection();
+                    await applyLoadResponse(res);
+                }
+                else {
+                    console.error("blueprint load failed:", res.error);
+                }
+            }
+        }
+        catch (err) {
+            console.error("blueprint parse error:", err);
+        }
+    });
     window.addEventListener("resize", () => Renderer.resize());
     Renderer.resize();
 }
 // ── Load / state ───────────────────────────────────────────────────
-async function loadAndRender(name) {
-    const res = await loadCase(name);
+async function loadBlank() {
+    const res = await fetchBlank();
     if (!res.ok) {
-        console.error("load failed", res.error);
+        console.error("blank map failed", res.error);
         return;
     }
-    placements = placementsFromResponse(res);
+    await applyLoadResponse(res);
+}
+async function applyLoadResponse(res) {
+    const placements = placementsFromResponse(res);
+    PlacementController.setPlacements(placements);
     selectedCompId = null;
     Renderer.resetView();
     applyLayoutResponse(res);
@@ -138,7 +203,24 @@ function applyLayoutResponse(res) {
     const cs = res.components_state ?? [];
     Renderer.setAnimDuration(0);
     Renderer.setState(cs);
+    if (res.inventory) {
+        inventory = { ...res.inventory };
+        Palette.setInventoryData(inventory);
+    }
     updateInfo(res.tick, cs);
+}
+async function onPlacementsChanged(placements) {
+    stopAutoPlay();
+    const res = await sendLayout(placements, inventory);
+    if (!res.ok) {
+        console.error("layout rejected:", res.error);
+        return;
+    }
+    applyLayoutResponse(res);
+}
+function onInventoryChanged(data) {
+    inventory = data;
+    onPlacementsChanged(PlacementController.getPlacements());
 }
 async function stepTick() {
     const res = await tick(1);
@@ -174,67 +256,64 @@ function stopAutoPlay() {
 }
 async function keepAutoPlaying() {
     while (autoPlaying) {
-        const t0 = performance.now();
+        const now = performance.now();
+        const interval = pendingInterval ?? tickInterval;
+        nextTickTime = now + interval;
         const res = await tick(1);
         if (res.ok) {
-            Renderer.setAnimDuration(tickInterval);
+            Renderer.setAnimDuration(interval);
             Renderer.setState(res.components);
             updateInfo(res.tick, res.components);
         }
-        const wait = Math.max(0, tickInterval - (performance.now() - t0));
+        const wait = Math.max(0, nextTickTime - performance.now());
         if (wait > 0)
             await new Promise(r => setTimeout(r, wait));
     }
 }
-// ── Canvas clicks ──────────────────────────────────────────────────
-async function onCanvasClick(e, canvas) {
+// ── Canvas interaction ─────────────────────────────────────────────
+async function onCanvasClick(e, canvas, btn) {
     const rect = canvas.getBoundingClientRect();
     const sx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const sy = (e.clientY - rect.top) * (canvas.height / rect.height);
     const cell = Renderer.screenToCell(sx, sy);
     if (!cell)
         return;
-    const existing = Renderer.findComponentAt(cell);
-    if (existing) {
-        stopAutoPlay();
-        selectedCompId = existing.id;
-        Renderer.setSelected(existing.id);
-        Renderer.draw();
+    // If in a placement mode, delegate to placement controller
+    const pMode = PlacementController.getMode();
+    if (pMode.mode !== "idle") {
+        await PlacementController.onClick(cell, btn);
         return;
     }
-    const selType = Palette.getSelectedType();
-    if (!selType)
-        return;
-    stopAutoPlay();
-    selectedCompId = null;
-    Renderer.setSelected(null);
-    const placement = Palette.buildPlacement(cell, "ROT_0");
-    if (!placement)
-        return;
-    placements.push(placement);
-    const res = await sendLayout(placements, inventory);
-    if (!res.ok) {
-        placements.pop();
-        console.error("layout rejected:", res.error);
-        return;
+    // Otherwise: select existing component on LMB
+    if (btn === 0) {
+        const existing = Renderer.findComponentAt(cell);
+        if (existing) {
+            stopAutoPlay();
+            selectedCompId = existing.id;
+            Renderer.setSelected(existing.id);
+            Renderer.draw();
+            return;
+        }
     }
-    placements = placementsFromResponse(res);
-    applyLayoutResponse(res);
+    // RMB when idle → clear palette
+    if (btn === 2) {
+        PlacementController.cancel();
+        Palette.clearSelection();
+    }
 }
 function onCanvasHover(e, canvas, tip) {
     const rect = canvas.getBoundingClientRect();
     const sx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const sy = (e.clientY - rect.top) * (canvas.height / rect.height);
     const cell = Renderer.screenToCell(sx, sy);
-    if (!cell) {
+    // Always update placement ghost
+    PlacementController.onHover(cell);
+    // Show tooltip for existing components
+    if (!cell || !Renderer.findComponentAt(cell)) {
         tip.style.display = "none";
         return;
     }
     const comp = Renderer.findComponentAt(cell);
-    if (!comp) {
-        tip.style.display = "none";
-        return;
-    }
     tip.style.display = "block";
     tip.style.left = `${e.clientX - rect.left + 12}px`;
     tip.style.top = `${e.clientY - rect.top - 10}px`;
@@ -242,8 +321,14 @@ function onCanvasHover(e, canvas, tip) {
 }
 // ── Keyboard ───────────────────────────────────────────────────────
 function onKey(e) {
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement)
+    if (e.target instanceof HTMLInputElement)
         return;
+    // Ctrl+S → save blueprint
+    if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+        e.preventDefault();
+        onSave();
+        return;
+    }
     switch (e.key) {
         case " ":
             e.preventDefault();
@@ -260,7 +345,7 @@ function onKey(e) {
         case "R":
             e.preventDefault();
             stopAutoPlay();
-            rotateSelected();
+            onRotate();
             break;
         case "Delete":
         case "Backspace":
@@ -268,14 +353,40 @@ function onKey(e) {
             stopAutoPlay();
             deleteSelected();
             break;
+        case "Tab":
+            e.preventDefault();
+            PlacementController.onToggleCorner();
+            break;
+        case "Escape":
+            e.preventDefault();
+            if (PlacementController.hasWaypoints()) {
+                // Conveyor with waypoints: commit like RMB
+                PlacementController.handleCommit();
+            }
+            else {
+                PlacementController.cancel();
+                Palette.clearSelection();
+            }
+            break;
     }
 }
-async function rotateSelected() {
+function onRotate() {
+    // If in placement mode, rotate the pending placement
+    const pMode = PlacementController.getMode();
+    if (pMode.mode !== "idle") {
+        PlacementController.onRotate();
+        return;
+    }
+    // Otherwise, rotate selected component
+    rotateSelectedExisting();
+}
+async function rotateSelectedExisting() {
     if (selectedCompId == null)
         return;
     const comp = Renderer.findComponentById(selectedCompId);
     if (!comp)
         return;
+    const placements = PlacementController.getPlacements();
     if (comp.type === "conveyor") {
         const dirSeq = [
             ["up", "down"],
@@ -304,11 +415,8 @@ async function rotateSelected() {
             }
         }
     }
-    const res = await sendLayout(placements, inventory);
-    if (!res.ok)
-        return;
-    placements = placementsFromResponse(res);
-    applyLayoutResponse(res);
+    PlacementController.setPlacements(placements);
+    await onPlacementsChanged(placements);
 }
 async function deleteSelected() {
     if (selectedCompId == null)
@@ -316,16 +424,26 @@ async function deleteSelected() {
     const comp = Renderer.findComponentById(selectedCompId);
     if (!comp)
         return;
+    let placements = PlacementController.getPlacements();
     placements = placements.filter(p => comp.type === "conveyor"
         ? !(p.path && p.path[0][0] === comp.pos[0] && p.path[0][1] === comp.pos[1])
         : !(p.pos && p.pos[0] === comp.pos[0] && p.pos[1] === comp.pos[1]));
     selectedCompId = null;
     Renderer.setSelected(null);
-    const res = await sendLayout(placements, inventory);
-    if (!res.ok)
-        return;
-    placements = placementsFromResponse(res);
-    applyLayoutResponse(res);
+    PlacementController.setPlacements(placements);
+    await onPlacementsChanged(placements);
+}
+// ── Blueprint save ──────────────────────────────────────────────────
+async function onSave() {
+    const data = await saveBlueprint();
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "blueprint.blueprint";
+    a.click();
+    URL.revokeObjectURL(url);
 }
 // ── Info bar ───────────────────────────────────────────────────────
 function updateInfo(tick, comps) {

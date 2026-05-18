@@ -26,8 +26,15 @@ class Base(ABC):
     pull_rr: int
     upstream_rr: int
 
+    topo_index: int
+
+    _downstream_groups: List[tuple[int, int]]
+    _downstream_rr: List[int]
+
     def __init__(self, comp_id: int) -> None:
-        """Args:
+        """Initialise a component base.
+
+        Args:
             comp_id: Unique numeric identifier for this component.
         """
         self.id = comp_id
@@ -41,8 +48,15 @@ class Base(ABC):
         self.pull_rr = 0
         self.upstream_rr = 0
 
+        self.topo_index = -1
+        self._downstream_groups = []
+        self._downstream_rr = []
+
     def add_link(self, component: "Base", link_type: LinkType):
         """Register a link to another component.
+
+        Updates in-degree / out-degree and appends to the corresponding
+        adjacency list.
 
         Args:
             component: The component to link.
@@ -57,6 +71,26 @@ class Base(ABC):
                 self.downstreams.append(component)
             case LinkType.NONE:
                 return
+
+    def finalize(self) -> None:
+        """Sort downstreams by topo_index and build group table for RR.
+
+        Called once after the topological sort is complete.
+        Groups are stored as (start, end) ranges into downstreams,
+        with a parallel ``_downstream_rr`` list of per-group RR indices.
+        """
+        self.downstreams.sort(key=lambda d: d.topo_index)
+        self._downstream_groups.clear()
+        self._downstream_rr.clear()
+        i = 0
+        while i < len(self.downstreams):
+            ti = self.downstreams[i].topo_index
+            j = i
+            while j < len(self.downstreams) and self.downstreams[j].topo_index == ti:
+                j += 1
+            self._downstream_groups.append((i, j))
+            self._downstream_rr.append(0)
+            i = j
 
     def add_pull(self, requester: "Base") -> None:
         """Add a downstream component to the pull-request queue.
@@ -76,14 +110,30 @@ class Base(ABC):
         """Request items from upstream components."""
         ...
 
+    def self_update(self) -> None:
+        """Advance internal state (e.g. shift belt slots).
+
+        Called after ``fulfill_requests()`` and before
+        ``request_upstream()`` in Phase 1.  Default no-op.
+        """
+        ...
+
     def phase1(self) -> None:
-        """Reverse pass (sinks→sources): grant pulls + register demand on upstream."""
+        """Phase 1 (sinks → sources): deliver, advance, then request.
+
+        Delegates to ``fulfill_requests()``, ``self_update()``, and
+        ``request_upstream()`` in sequence.
+        """
         self.fulfill_requests()
+        self.self_update()
         self.request_upstream()
 
     def phase2(self) -> None:
-        """Forward pass (sources→sinks): forward items received in Phase 1.
-        Default no-op; override in components that want zero-tick passthrough."""
+        """Forward pass (sources → sinks): handle zero-tick forwarding.
+
+        Default no-op.  Override in components that need zero-tick
+        routing (e.g. :class:`ProtocolStash`).
+        """
 
     def can_pull(self) -> bool:
         """Check whether this component currently has an item to provide.

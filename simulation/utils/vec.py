@@ -12,16 +12,20 @@ class Vec(object):
     """An integer 2-D vector with rotation semantics."""
 
     def __init__(self, x: int, y: int) -> None:
-        """Args:
+        """Initialise a 2-D vector.
+
+        Args:
             x: X-coordinate component.
             y: Y-coordinate component (forward direction).
         """
         self.x, self.y = x, y
-    
+
     def __hash__(self) -> int:
+        """Hash based on the (x, y) tuple."""
         return hash((self.x, self.y))
-    
+
     def __eq__(self, other: object) -> bool:
+        """Compare two Vecs for equality."""
         return isinstance(other, Vec) and self.x == other.x and self.y == other.y
     
     def __add__(self, other):

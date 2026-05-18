@@ -1,4 +1,8 @@
-"""Grid-based component placement with overlap detection."""
+"""Grid-based component placement with overlap detection.
+
+The Layout maps every occupied world cell to its component type+rotation.
+Raise ``ValueError`` on construction if any two components overlap.
+"""
 
 from typing import Dict, Tuple, Set, Iterable, Optional, Any
 from .utils import Vec
@@ -19,6 +23,15 @@ class Layout(object):
 
         Iterates every component's coverage cells and checks for
         overlap before inserting into the grid.
+
+        Args:
+            layout: Maps each component's origin to its
+                ``(ComponentType, Rotation)``.
+            comp_configs: Optional per-origin config dicts forwarded to
+                ``get_metadata``.
+
+        Raises:
+            ValueError: If two components occupy the same cell.
         """
         self.layout = layout
         self._meta_cfgs: Dict[Vec, dict] = comp_configs or {}
@@ -37,24 +50,60 @@ class Layout(object):
                 self._occupancy.add(cell)
 
     def is_occupied(self, coord: Vec) -> bool:
-        """Check whether a world cell is occupied."""
+        """Check whether a world cell is occupied.
+
+        Args:
+            coord: World cell coordinate.
+
+        Returns:
+            True if the cell is occupied.
+        """
         return coord in self._occupancy
 
     def get_component_at(self, coord: Vec) -> Optional[Tuple[ComponentType, Rotation]]:
-        """Look up the component occupying a cell."""
+        """Look up the component occupying a cell.
+
+        Args:
+            coord: World cell coordinate.
+
+        Returns:
+            The ``(ComponentType, Rotation)`` at *coord*, or None.
+        """
         return self._grid.get(coord)
 
     def get(self, coord: Vec, default: Any = None) -> Tuple[ComponentType, Rotation] | Any:
-        """Dict-style get with default."""
+        """Dict-style get with default.
+
+        Args:
+            coord: World cell coordinate.
+            default: Value returned if the cell is unoccupied.
+
+        Returns:
+            The ``(ComponentType, Rotation)`` at *coord*, or *default*.
+        """
         result = self.get_component_at(coord)
         if result is None:
             return default
         return result
 
     def __getitem__(self, coord: Vec) -> Tuple[ComponentType, Rotation]:
-        """Dict-style lookup (raises KeyError if unoccupied)."""
+        """Look up a cell (raises KeyError if unoccupied).
+
+        Args:
+            coord: World cell coordinate.
+
+        Returns:
+            The ``(ComponentType, Rotation)`` at *coord*.
+
+        Raises:
+            KeyError: If the cell is not occupied.
+        """
         return self._grid[coord]
 
     def get_all_components(self) -> Iterable[Tuple[Vec, Tuple[ComponentType, Rotation]]]:
-        """Yield all (origin, (type, rotation)) pairs in insertion order."""
+        """Yield all (origin, (type, rotation)) pairs in insertion order.
+
+        Yields:
+            ``(Vec, (ComponentType, Rotation))`` for every component.
+        """
         return self.layout.items()

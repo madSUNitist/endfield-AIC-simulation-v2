@@ -1,34 +1,22 @@
-"""Top-level factory that assembles a complete simulation from a config dict."""
+"""Top-level factory that assembles a complete simulation from a config dict.
+
+The Factory owns the ID generator, a shared global Inventory, a Layout
+(grid occupancy), and a Graph (port connections + topological order).
+"""
 
 from typing import Any
 
 from ._id_gen import IDGen
-from ._enums import ComponentType as CT, Rotation as R
+from ._enums import ComponentType, Rotation
 from .items.inventory import Inventory
+from .mappings import get_type, get_rotation
 from .utils import Vec
 from .utils.coverage import _expand
 from .layout import Layout
 from .graph import Graph
 
 
-_TYPE_MAP: dict[str, CT] = {
-    "depot_loader": CT.DEPOT_ACCESS_DEPOT_LOADER,
-    "depot_unloader": CT.DEPOT_ACCESS_DEPOT_UNLOADER,
-    "protocol_stash": CT.DEPOT_ACCESS_PROTOCOL_STASH,
-    "conveyor": CT.LOGISTICS_BELT_CONVEYOR,
-    "splitter": CT.LOGISTICS_BELT_SPLITTER,
-    "converger": CT.LOGISTICS_BELT_CONVERGER,
-    "belt_bridge": CT.LOGISTICS_BELT_BELT_BRIDGE,
-    "item_control_port": CT.LOGISTICS_BELT_ITEM_CONTROL_PORT,
-}
-
-_ROT_MAP: dict[str, R] = {
-    "ROT_0": R.ROT_0, "ROT_1": R.ROT_1,
-    "ROT_2": R.ROT_2, "ROT_3": R.ROT_3,
-}
-
-
-class Factory:
+class Factory(object):
     """Top-level assembler that builds a simulation from a JSON config.
 
     Owns the ID generator, a shared global Inventory, a Layout (grid
@@ -50,16 +38,25 @@ class Factory:
         self.layout = Layout(layout_dict, comp_configs=comp_configs)
         self.graph = Graph(self.layout, comp_configs=comp_configs)
 
-    def _parse(self, config: dict
-               ) -> tuple[dict[Vec, tuple[CT, R]], dict[Vec, dict[str, Any]]]:
-        layout: dict[Vec, tuple[CT, R]] = {}
+    def _parse(self, config: dict) -> tuple[dict[Vec, tuple[ComponentType, Rotation]], dict[Vec, dict[str, Any]]]:
+        """Parse a config dict into layout and component-config maps.
+
+        Args:
+            config: Top-level config dict containing a ``"components"`` list.
+
+        Returns:
+            A tuple ``(layout, cfgs)`` where *layout* maps each component's
+            origin to its ``(ComponentType, Rotation)`` and *cfgs* maps each
+            origin to additional init kwargs.
+        """
+        layout: dict[Vec, tuple[ComponentType, Rotation]] = {}
         cfgs: dict[Vec, dict[str, Any]] = {}
         for entry in config.get("components", []):
-            ct = _TYPE_MAP[entry["type"]]
-            rot = _ROT_MAP.get(entry.get("rot", "ROT_0"), R.ROT_0)
+            ct = get_type(entry["type"])
+            rot = get_rotation(entry.get("rot", "ROT_0"))
             cfg: dict[str, Any] = {}
 
-            if ct is CT.LOGISTICS_BELT_CONVEYOR:
+            if ct is ComponentType.LOGISTICS_BELT_CONVEYOR:
                 path = entry.get("path")
                 if not path or "direction_in" not in entry or "direction_out" not in entry:
                     raise ValueError(
@@ -78,14 +75,14 @@ class Factory:
 
             layout[pos] = (ct, rot)
 
-            if ct is CT.DEPOT_ACCESS_DEPOT_LOADER:
+            if ct is ComponentType.DEPOT_ACCESS_DEPOT_LOADER:
                 cfg["id_gen"] = self.id_gen
                 cfg["inventory"] = self.inv
                 cfg["item_type"] = entry["item"]
-            elif ct is CT.DEPOT_ACCESS_DEPOT_UNLOADER:
+            elif ct is ComponentType.DEPOT_ACCESS_DEPOT_UNLOADER:
                 cfg["id_gen"] = self.id_gen
                 cfg["inventory"] = self.inv
-            elif ct is CT.DEPOT_ACCESS_PROTOCOL_STASH:
+            elif ct is ComponentType.DEPOT_ACCESS_PROTOCOL_STASH:
                 cfg["id_gen"] = self.id_gen
                 cfg["inventory"] = Inventory(6, self.id_gen)
 
@@ -94,14 +91,18 @@ class Factory:
         return layout, cfgs
 
     def tick(self) -> None:
-        """Advance the simulation by one tick (delegates to Graph)."""
+        """Advance the simulation by one tick.
+
+        Delegates to the underlying Graph's two-phase tick loop.
+        """
         self.graph.tick()
 
     def run(self, ticks: int = 0) -> None:
         """Run multiple ticks.
 
-        If ``ticks`` is 0, runs a default number of ticks based on
-        graph order length.
+        Args:
+            ticks: Number of ticks to execute. If 0, a default is
+                computed from the graph order length.
         """
         if not ticks:
             ticks = max(len(self.graph.order) * 2 + 10, 20)

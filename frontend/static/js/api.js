@@ -19,12 +19,31 @@ export async function loadCase(name) {
     });
     return r.json();
 }
+/** Create a blank (empty) map. */
+export async function fetchBlank() {
+    const r = await fetch(`${BASE}/api/blank`, { method: "POST" });
+    return r.json();
+}
 /** Submit a custom layout and reset to tick 0. */
 export async function sendLayout(placements, inventory = {}) {
     const r = await fetch(`${BASE}/api/layout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ components: placements, inventory }),
+    });
+    return r.json();
+}
+/** Save current layout as blueprint array. */
+export async function saveBlueprint() {
+    const r = await fetch(`${BASE}/api/save`);
+    return r.json();
+}
+/** Load a blueprint (array of component entries). */
+export async function loadBlueprint(data) {
+    const r = await fetch(`${BASE}/api/load-blueprint`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
     });
     return r.json();
 }

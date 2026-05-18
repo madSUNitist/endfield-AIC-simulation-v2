@@ -10,12 +10,15 @@ class Item(object):
     """A unique item instance with a type and identifier."""
 
     def __init__(self, item_id: int, item_type: Hashable):
-        """Args:
+        """Initialise a new item instance.
+
+        Args:
             item_id: Unique numeric identifier for this item.
             item_type: Hashable tag representing the item category.
         """
         self.id = item_id
         self.type = item_type
-    
+
     def __hash__(self) -> int:
+        """Hash based on the (id, type) pair."""
         return (self.id, self.type).__hash__()

@@ -12,12 +12,21 @@ class Converger(Base):
     """N-to-1 item merge component with a single-slot buffer and RR upstream."""
 
     def __init__(self, comp_id: int) -> None:
+        """Initialise a converger with an empty buffer.
+
+        Args:
+            comp_id: Unique numeric identifier.
+        """
         super().__init__(comp_id)
         self._buffer: Item | None = None
         self._skip_idx: int = 0
 
     def can_pull(self) -> bool:
-        """True when the converger has an item in its buffer."""
+        """Check whether the buffer holds an item.
+
+        Returns:
+            True if the buffer is occupied.
+        """
         return self._buffer is not None
 
     def fulfill_requests(self) -> None:
@@ -31,7 +40,10 @@ class Converger(Base):
             self._buffer = item
 
     def request_upstream(self) -> None:
-        """RR scan upstreams, pull from the first that can provide."""
+        """RR scan upstreams, pull from the first that can provide.
+
+        Skips full upstreams using ``_skip_idx`` for fair round-robin.
+        """
         if self._buffer is not None:
             return
         n = len(self.upstreams)
@@ -45,8 +57,11 @@ class Converger(Base):
     def _accept_item(self, item: Item) -> bool:
         """Accept an item into the single-slot buffer.
 
+        Args:
+            item: The item to accept.
+
         Returns:
-            True if the buffer was empty and the item was accepted.
+            True if the buffer was empty and the item was stored.
         """
         if self._buffer is not None:
             return False

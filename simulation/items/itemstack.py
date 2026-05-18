@@ -13,11 +13,13 @@ class ItemStack(object):
     """A stack of items of a single type with a fixed capacity."""
 
     def __init__(self, type: Hashable, id_gen: IDGen, capacity: int = 50, count: int = 0) -> None:
-        """Args:
+        """Initialise an item stack.
+
+        Args:
             type: The hashable item type this stack accepts.
             id_gen: Generator for unique item IDs.
-            capacity: Maximum number of items this stack can hold (default 50).
-            count: Initial number of items in the stack (default 0).
+            capacity: Maximum number of items this stack can hold. Defaults to 50.
+            count: Initial number of items in the stack. Defaults to 0.
         """
         self.type = type
         self.capacity = capacity

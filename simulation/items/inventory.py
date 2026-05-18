@@ -16,7 +16,9 @@ class Inventory(object):
 
     def __init__(self, slots: int, id_gen: IDGen,
                  defaults: Optional[dict] = None) -> None:
-        """Args:
+        """Initialise an inventory with a fixed number of slots.
+
+        Args:
             slots: Number of stack slots in the inventory.
             id_gen: Generator for unique item IDs.
             defaults: Optional dict mapping item types to initial counts,

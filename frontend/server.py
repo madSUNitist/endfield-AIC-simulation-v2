@@ -5,17 +5,15 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from simulation.factory import Factory
-from simulation._enums import ComponentType as CT, Rotation as R
 from simulation.utils import Vec
-from simulation.utils.coverage import _expand
-from simulation.mappings import get_metadata
+from simulation.mappings import get_metadata, get_type, get_type_name, TYPE_NAMES
 
 app = FastAPI()
 
@@ -50,17 +48,6 @@ _config: Optional[dict] = None
 
 _EXCLUDE_TYPES = {"belt_bridge", "item_control_port"}
 
-_TYPE_MAP: dict[str, CT] = {
-    "depot_loader":      CT.DEPOT_ACCESS_DEPOT_LOADER,
-    "depot_unloader":    CT.DEPOT_ACCESS_DEPOT_UNLOADER,
-    "protocol_stash":    CT.DEPOT_ACCESS_PROTOCOL_STASH,
-    "conveyor":          CT.LOGISTICS_BELT_CONVEYOR,
-    "splitter":          CT.LOGISTICS_BELT_SPLITTER,
-    "converger":         CT.LOGISTICS_BELT_CONVERGER,
-    "belt_bridge":       CT.LOGISTICS_BELT_BELT_BRIDGE,
-    "item_control_port": CT.LOGISTICS_BELT_ITEM_CONTROL_PORT,
-}
-
 _COLORS: dict[str, str] = {
     "depot_loader":   "#4CAF50",
     "depot_unloader": "#f44336",
@@ -86,6 +73,14 @@ _LABELS: dict[str, str] = {
 # ── Build response data ─────────────────────────────────────────────
 
 def _find_entry(coord: Vec) -> dict:
+    """Look up the original config entry for a component by its origin.
+
+    Args:
+        coord: Grid origin of the component.
+
+    Returns:
+        The matching config dict entry, or an empty dict if not found.
+    """
     if _config is None:
         return {}
     for entry in _config.get("components", []):
@@ -99,10 +94,28 @@ def _find_entry(coord: Vec) -> dict:
 
 
 def _entry_kwargs(entry: dict) -> dict:
+    """Extract conveyor-specific kwargs from a config entry.
+
+    Args:
+        entry: A component config dict.
+
+    Returns:
+        Dict with keys ``path``, ``direction_in``, ``direction_out``
+        if present in the entry.
+    """
     return {k: entry[k] for k in ("path", "direction_in", "direction_out") if k in entry}
 
 
 def build_layout() -> dict:
+    """Build the layout response dict for the frontend.
+
+    Iterates all components in the graph and produces the
+    ``components``, ``edges``, and ``viewport`` payload.
+
+    Returns:
+        A dict with keys ``components`` (list of component descriptors),
+        ``edges`` (list of ``{from, to}``), and ``viewport``.
+    """
     global _factory
     assert _factory is not None
 
@@ -115,8 +128,8 @@ def build_layout() -> dict:
             continue
         rot = _factory.layout[coord][1]
 
-        type_name = next((k for k, v in _TYPE_MAP.items() if v is ct), None)
-        if type_name is None or type_name in _EXCLUDE_TYPES:
+        type_name = get_type_name(ct)
+        if type_name in _EXCLUDE_TYPES:
             continue
 
         entry = _find_entry(coord)
@@ -207,6 +220,19 @@ def build_layout() -> dict:
 
 
 def build_component_state(comp: Any, coord: Vec) -> dict:
+    """Build the per-tick state dict for a single component.
+
+    Inspects the concrete component type and extracts relevant state
+    (slot_map, buffer, inventory counts, etc.) for the frontend.
+
+    Args:
+        comp: The component instance.
+        coord: Grid origin of the component.
+
+    Returns:
+        A state dict with type-specific keys (``slot_map``,
+        ``buffer``, ``count``, ``inventory``, etc.).
+    """
     global _factory
     assert _factory is not None
     from simulation.units.logistics_units.belt.conveyor import Conveyor
@@ -254,6 +280,11 @@ def build_component_state(comp: Any, coord: Vec) -> dict:
 
 
 def build_state() -> dict:
+    """Build the full tick-state response (tick number + component states).
+
+    Returns:
+        A dict with ``tick`` (int) and ``components`` (list of state dicts).
+    """
     global _factory, _current_tick
     assert _factory is not None
     comps = []
@@ -265,12 +296,23 @@ def build_state() -> dict:
 
 
 def build_full_response() -> dict:
+    """Build the complete response used by /api/load, /api/layout, etc.
+
+    Combines layout data, tick state, inventory, and a top-level
+    ``ok`` flag into a single response dict.
+
+    Returns:
+        A dict with ``ok``, layout keys, ``tick``, ``inventory``,
+        and ``components_state``.
+    """
+    global _config
     layout = build_layout()
     state = build_state()
     return {
         "ok": True,
         **layout,
         "tick": state["tick"],
+        "inventory": (_config or {}).get("inventory", {}),
         "components_state": state["components"],
     }
 
@@ -283,11 +325,56 @@ def list_cases():
     return sorted(p.stem for p in cases_dir.glob("*.json"))
 
 
+@app.post("/api/blank")
+def blank_map():
+    """Create a blank (empty) map with default viewport."""
+    global _factory, _current_tick, _config
+    _config = {
+        "name": "Blank Map",
+        "ticks": 99999,
+        "inventory": {},
+        "components": [],
+    }
+    _factory = Factory(_config)
+    _current_tick = 0
+    return build_full_response()
+
+
+@app.get("/api/save")
+def save_blueprint():
+    """Return the current layout as a bare blueprint array
+    (matches the test_case component-entry format)."""
+    global _config
+    if _config is None:
+        return []
+    return _config.get("components", [])
+
+
+@app.post("/api/load-blueprint")
+async def load_blueprint(request: Request):
+    """Accept a blueprint array (bare component entries) and load it."""
+    global _factory, _current_tick, _config
+    data = await request.json()
+    comps = data if isinstance(data, list) else []
+    _config = {
+        "name": "Blueprint",
+        "ticks": 99999,
+        "inventory": {},
+        "components": comps,
+    }
+    try:
+        _factory = Factory(_config)
+        _current_tick = 0
+        return build_full_response()
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 @app.get("/api/component_types")
 def component_types():
     """Return palette metadata (coverage, ports, colour) for every type."""
     result = []
-    for type_name, ct in _TYPE_MAP.items():
+    for type_name in TYPE_NAMES:
         if type_name in _EXCLUDE_TYPES:
             continue
         if type_name == "conveyor":
@@ -302,7 +389,7 @@ def component_types():
                 ],
             })
             continue
-        cov, ports = get_metadata(ct)
+        cov, ports = get_metadata(get_type(type_name))
         port_list = []
         for pt, po, pd in ports:
             port_list.append({

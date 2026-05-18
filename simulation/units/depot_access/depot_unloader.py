@@ -11,8 +11,10 @@ class DepotUnloader(Base):
 
     def __init__(self, comp_id: int, *, id_gen: IDGen,
                  inventory: Inventory) -> None:
-        """Args:
-            comp_id: Unique numeric identifier for this component.
+        """Initialise a depot unloader.
+
+        Args:
+            comp_id: Unique numeric identifier.
             id_gen: Generator for unique item IDs.
             inventory: The target inventory to push items into.
         """
@@ -21,7 +23,11 @@ class DepotUnloader(Base):
         self._inv = inventory
 
     def can_pull(self) -> bool:
-        """Depot unloaders never provide items downstream."""
+        """Check whether this component can provide an item.
+
+        Returns:
+            Always False — depot unloaders never provide items.
+        """
         return False
 
     def fulfill_requests(self) -> None:
@@ -29,14 +35,17 @@ class DepotUnloader(Base):
         ...
 
     def request_upstream(self) -> None:
-        """Request an item from the first upstream component if it can pull."""
+        """Request an item from the first upstream if it can pull."""
         if self.upstreams and self.upstreams[0].can_pull():
             self.upstreams[0].add_pull(self)
 
     def _accept_item(self, item: Item) -> bool:
         """Push the item into the inventory.
 
+        Args:
+            item: The item to store.
+
         Returns:
-            True if the item was accepted into the inventory, False if full.
+            True if the item was accepted, False if the inventory is full.
         """
         return self._inv.push(item)

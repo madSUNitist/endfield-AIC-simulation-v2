@@ -5,24 +5,51 @@ import type { PaletteItem, Placement, Rotation } from "./types.js";
 let items: PaletteItem[] = [];
 let selectedType: string | null = null;
 let selectedItemType: string = "ore";
+let inventoryData: Record<string, string> = {};
 
 let onSelect: ((type: string | null) => void) | null = null;
+let onInventoryChange: ((data: Record<string, number>) => void) | null = null;
 
 // DOM refs
 let container: HTMLElement;
 
-/** Initialise the palette sidebar UI. */
-export function init(el: HTMLElement, cb: (type: string | null) => void): void {
+/**
+ * Initialise the palette sidebar UI.
+ * @param el - The container DOM element.
+ * @param cb - Called when palette selection changes.
+ * @param invCb - Called when inventory data changes.
+ */
+export function init(el: HTMLElement,
+                     cb: (type: string | null) => void,
+                     invCb: (data: Record<string, number>) => void): void {
     container = el;
     onSelect = cb;
+    onInventoryChange = invCb;
 }
 
-/** Set palette items and re-render. */
+/**
+ * Set palette items and re-render.
+ * @param list - Array of PaletteItem metadata from the backend.
+ */
 export function setPaletteItems(list: PaletteItem[]): void {
     items = list;
     render();
 }
 
+/**
+ * Set inventory data from external source and re-render.
+ * @param data - Inventory counts keyed by item type.
+ */
+export function setInventoryData(data: Record<string, number>): void {
+    const s: Record<string, string> = {};
+    for (const [k, v] of Object.entries(data)) {
+        s[k] = String(v);
+    }
+    inventoryData = s;
+    render();
+}
+
+/** Re-render the entire palette sidebar DOM. */
 function render(): void {
     let html = `<div class="palette-header">Components</div>`;
     html += `<div class="palette-list">`;
@@ -42,9 +69,26 @@ function render(): void {
         html += `</div>`;
     }
 
+    // Inventory panel
+    html += `<div class="palette-header" style="margin-top:8px">Inventory</div>`;
+    html += `<div class="inventory-panel">`;
+    const entries = Object.entries(inventoryData);
+    if (entries.length === 0) {
+        html += `<div class="inv-empty">(empty)</div>`;
+    }
+    for (const [name, count] of entries) {
+        html += `<div class="inv-row">`;
+        html += `<input class="inv-name" value="${escapeHtml(name)}" placeholder="item">`;
+        html += `<input class="inv-count" value="${count}" placeholder="0">`;
+        html += `<button class="inv-del" data-inv-key="${escapeHtml(name)}">×</button>`;
+        html += `</div>`;
+    }
+    html += `<button class="inv-add">+ Add Row</button>`;
+    html += `</div>`;
+
     container.innerHTML = html;
 
-    // Bind clicks
+    // Bind palette clicks
     for (const el of container.querySelectorAll(".palette-item")) {
         el.addEventListener("click", () => {
             const t = (el as HTMLElement).dataset.type!;
@@ -63,18 +107,121 @@ function render(): void {
     if (itemInput) {
         itemInput.addEventListener("change", () => { selectedItemType = itemInput.value; });
     }
+
+    // Bind inventory inputs (delegated to avoid stale references)
+    for (const row of container.querySelectorAll(".inv-row")) {
+        const nameIn = row.querySelector(".inv-name") as HTMLInputElement;
+        const countIn = row.querySelector(".inv-count") as HTMLInputElement;
+        const delBtn = row.querySelector(".inv-del") as HTMLButtonElement;
+
+        const commit = () => {
+            const key = nameIn.value.trim();
+            const val = parseInt(countIn.value) || 0;
+            if (key) {
+                inventoryData[key] = String(val);
+            }
+            // Remove entry if name was cleared
+            for (const k of Object.keys(inventoryData)) {
+                if (k !== key && !container.querySelector(`[data-inv-key="${escapeHtml(k)}"]`)) {
+                    // already removed via delete
+                }
+            }
+            emitInventory();
+        };
+
+        nameIn.addEventListener("change", () => {
+            const oldKey = delBtn.dataset.invKey ?? "";
+            const newKey = nameIn.value.trim();
+            if (newKey && newKey !== oldKey) {
+                delete inventoryData[oldKey];
+                inventoryData[newKey] = countIn.value;
+                delBtn.dataset.invKey = newKey;
+            }
+            emitInventory();
+            render();
+        });
+
+        countIn.addEventListener("change", () => {
+            inventoryData[delBtn.dataset.invKey ?? ""] = countIn.value;
+            emitInventory();
+        });
+
+        delBtn.addEventListener("click", () => {
+            const key = delBtn.dataset.invKey ?? "";
+            delete inventoryData[key];
+            emitInventory();
+            render();
+        });
+    }
+
+    // Bind add row
+    const addBtn = container.querySelector(".inv-add") as HTMLButtonElement;
+    if (addBtn) {
+        addBtn.addEventListener("click", () => {
+            // Find a unique key
+            let n = 1;
+            while (inventoryData[`item${n}`]) n++;
+            inventoryData[`item${n}`] = "0";
+            emitInventory();
+            render();
+            // Focus the new row's name input
+            const rows = container.querySelectorAll(".inv-row");
+            const lastRow = rows[rows.length - 1];
+            if (lastRow) (lastRow.querySelector(".inv-name") as HTMLInputElement)?.focus();
+        });
+    }
 }
 
-/** Return the currently selected component type. */
+/** Emit current inventory data via the callback. */
+function emitInventory(): void {
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(inventoryData)) {
+        if (k.trim()) out[k.trim()] = parseInt(v) || 0;
+    }
+    if (onInventoryChange) onInventoryChange(out);
+}
+
+/** Basic HTML entity escaping for user-provided strings. */
+function escapeHtml(s: string): string {
+    return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/**
+ * Return the currently selected component type.
+ * @returns Type string or null if nothing selected.
+ */
 export function getSelectedType(): string | null {
     return selectedType;
 }
 
-/** Rotation → (direction_in, direction_out) for single-cell conveyors.
- *
- * Conveyors default to direction_in="up", direction_out="down" at ROT_0.
- * Each 90° clockwise rotation shifts both ports clockwise.
+/**
+ * Return the currently configured item type (for depot_loader).
+ * @returns Item type string (default "ore").
  */
+export function getSelectedItemType(): string {
+    return selectedItemType;
+}
+
+/**
+ * Clear palette selection and re-render.
+ */
+export function clearSelection(): void {
+    selectedType = null;
+    if (onSelect) onSelect(null);
+    render();
+}
+
+/**
+ * Explicitly set selection by type name.
+ * @param t - Type string to select, or null to clear.
+ */
+export function setSelectedType(t: string | null): void {
+    selectedType = t;
+    if (onSelect) onSelect(t);
+    render();
+}
+
+/** Rotation → (direction_in, direction_out) for single-cell conveyors. */
 const DIR_FROM_ROT: Record<string, [string, string]> = {
     "ROT_0": ["up", "down"],
     "ROT_1": ["right", "left"],

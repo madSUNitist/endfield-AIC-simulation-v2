@@ -21,7 +21,17 @@ class Direction(Enum):
     RIGHT = (+1, 0)
 
     def __matmul__(self, other):
-        """Rotate this direction by a Rotation."""
+        """Rotate this direction by a Rotation.
+
+        Args:
+            other: A Rotation to apply.
+
+        Returns:
+            The resulting Direction after rotation.
+
+        Raises:
+            KeyError: If the rotated vector does not match a valid Direction.
+        """
         from .utils import Vec
         new_direction = Vec(*self.value) @ other
         match new_direction.x, new_direction.y:

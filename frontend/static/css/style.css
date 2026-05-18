@@ -57,6 +57,13 @@ html, body {
     text-align: center;
 }
 
+.sep {
+    width: 1px;
+    height: 20px;
+    background: #555;
+    flex-shrink: 0;
+}
+
 #speed-slider {
     width: 100px;
     accent-color: #4CAF50;
@@ -173,4 +180,73 @@ html, body {
     pointer-events: none;
     white-space: pre;
     z-index: 10;
+}
+
+/* ── Inventory panel ─────────────────────────────── */
+
+.inventory-panel {
+    padding: 4px 8px;
+}
+
+.inv-empty {
+    font-size: 11px;
+    color: #666;
+    padding: 4px 0;
+}
+
+.inv-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+    align-items: center;
+}
+
+.inv-name {
+    flex: 1;
+    background: #3a3a3a;
+    color: #ccc;
+    border: 1px solid #555;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 12px;
+    min-width: 0;
+}
+
+.inv-count {
+    width: 60px;
+    background: #3a3a3a;
+    color: #ccc;
+    border: 1px solid #555;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 12px;
+    text-align: right;
+}
+
+.inv-del {
+    background: none;
+    border: none;
+    color: #f44;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 2px;
+    line-height: 1;
+}
+
+.inv-add {
+    display: block;
+    width: 100%;
+    background: #3a3a3a;
+    color: #aaa;
+    border: 1px dashed #555;
+    padding: 3px 0;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11px;
+    margin-top: 4px;
+}
+
+.inv-add:hover {
+    background: #4a4a4a;
+    color: #ccc;
 }

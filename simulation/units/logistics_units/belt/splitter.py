@@ -12,14 +12,29 @@ class Splitter(Base):
     """1-to-N item distribution with single-slot buffer and RR downstream."""
 
     def __init__(self, comp_id: int) -> None:
+        """Initialise a splitter with an empty buffer.
+
+        Args:
+            comp_id: Unique numeric identifier.
+        """
         super().__init__(comp_id)
         self._buffer: Item | None = None
         self._rr_idx: int = 0
 
     def can_pull(self) -> bool:
+        """Check whether the buffer holds an item.
+
+        Returns:
+            True if the buffer is occupied.
+        """
         return self._buffer is not None
 
     def fulfill_requests(self) -> None:
+        """Grant one item to a pull requester via round-robin.
+
+        Scans downstreams in RR order and hands the buffered item to
+        the first requester that matches.  Clears unmatched requests.
+        """
         if self._buffer is None:
             self.pull_requests.clear()
             return
@@ -40,12 +55,21 @@ class Splitter(Base):
         self.pull_requests.clear()
 
     def request_upstream(self) -> None:
+        """Request an item from the first upstream if buffer is empty."""
         if self._buffer is not None or not self.upstreams:
             return
         if self.upstreams[0].can_pull():
             self.upstreams[0].add_pull(self)
 
     def _accept_item(self, item: Item) -> bool:
+        """Accept an item into the single-slot buffer.
+
+        Args:
+            item: The item to accept.
+
+        Returns:
+            True if the buffer was empty and the item was stored.
+        """
         if self._buffer is not None:
             return False
         self._buffer = item
