@@ -10,6 +10,7 @@ tools/*.png
 AGENTS.md
 
 frontend/node_modules/
+frontend/static/js/*.js
 frontend/static/js/*.js.map
 frontend/static/ts/*.js
 frontend/static/ts/*.js.map
