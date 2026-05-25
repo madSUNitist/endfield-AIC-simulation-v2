@@ -1,4 +1,4 @@
-# Endfield AIC Simulation (v3)
+# Endfield AIC Simulation (v2)
 
 Grid-based factory simulation with a two-phase tick loop, bilateral port matching,
 and a web-based canvas viewer.
@@ -10,7 +10,8 @@ and a web-based canvas viewer.
 - [x] **普通优先级** — 复现成功
 - [x] **部分环** — 复现成功
 - [ ] **环的手性** — 暂未复现，但（也许）能提供解释
-- [ ] **分流器-汇流器紧贴时的优先级** — 无法解释
+- [x] **分流器-汇流器紧贴时的优先级** — 部分解释
+- [ ] **放置顺序带来的影响** — 部分复现，但结果非常神秘
 
 ---
 
@@ -331,6 +332,7 @@ uv run pytest                    # Run all tests
 uv run mypy .                    # Static type checking
 uv run python frontend/server.py # Start dev server at http://127.0.0.1:8000
 
+pwsh server.ps1                  # One-shot: build TS + start server
 cd frontend && npm install       # Install frontend deps
 cd frontend && npm run build     # Compile TypeScript → JS
 ```

@@ -26,7 +26,11 @@ let animDuration = 400;
 let canvas;
 let ctx;
 let tooltipEl;
-/** Initialise the canvas and start the persistent RAF draw loop. */
+/**
+ * Initialise the canvas and start the persistent RAF draw loop.
+ * @param cvs - The canvas element to render into.
+ * @param tip - Tooltip element for hover hints.
+ */
 export function init(cvs, tip) {
     canvas = cvs;
     ctx = cvs.getContext("2d");
@@ -36,13 +40,23 @@ export function init(cvs, tip) {
         requestAnimationFrame(frame);
     });
 }
-/** Update layout data (components, edges). */
+/**
+ * Update layout data (components, edges).
+ * @param comps - Array of layout components.
+ * @param es - Array of directed edges.
+ * @param _vp - Viewport (currently ignored).
+ */
 export function setData(comps, es, _vp) {
+    console.log("renderer setData:", comps.length, "components,", es.length, "edges");
     layoutComps = comps;
     edges = es;
 }
-/** Update per-tick state and start a new animation segment. */
+/**
+ * Update per-tick state and start a new animation segment.
+ * @param comps - Array of per-component states after a tick.
+ */
 export function setState(comps) {
+    console.log("renderer setState:", comps.length, "states");
     prevStateMap = new Map(stateMap);
     stateMap.clear();
     for (const c of comps) {
@@ -50,31 +64,53 @@ export function setState(comps) {
     }
     animStartTime = performance.now();
 }
-/** Set animation duration in ms (0 = snap to final positions). */
+/**
+ * Set animation duration in ms (0 = snap to final positions).
+ * @param ms - Duration in milliseconds.
+ */
 export function setAnimDuration(ms) {
     animDuration = ms;
 }
-/** Highlight a component by ID (null = clear). */
+/**
+ * Highlight a component by ID.
+ * @param id - Component ID to highlight, or null to clear.
+ */
 export function setSelected(id) {
     selectedId = id;
 }
-/** Set ghost (placement preview) data (null = clear). */
+/**
+ * Set ghost (placement preview) data (null = clear).
+ * @param data - Ghost data or null.
+ */
 export function setGhost(data) {
+    console.log("renderer setGhost:", data ? `${data.cells.length} cells` : "clear");
     ghostData = data;
 }
-/** Resize canvas to fill its container. */
+/** Resize canvas to fill its container and redraw. */
 export function resize() {
     const parent = canvas.parentElement;
     canvas.width = parent.clientWidth;
     canvas.height = parent.clientHeight;
+    console.log("renderer resize:", canvas.width, "x", canvas.height);
     draw();
 }
 // ── Pan / zoom API ─────────────────────────────────────────────────
+/**
+ * Pan the view by the given delta.
+ * @param dx - X offset in screen pixels.
+ * @param dy - Y offset in screen pixels.
+ */
 export function pan(dx, dy) {
     panX += dx;
     panY += dy;
     draw();
 }
+/**
+ * Handle zoom via mouse wheel, keeping (cx, cy) fixed.
+ * @param deltaY - Wheel delta (positive = zoom out).
+ * @param cx - Fixed-point X in screen pixels.
+ * @param cy - Fixed-point Y in screen pixels.
+ */
 export function handleWheel(deltaY, cx, cy) {
     const factor = deltaY > 0 ? 0.9 : 1.1;
     const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * factor));
@@ -83,7 +119,9 @@ export function handleWheel(deltaY, cx, cy) {
     zoom = newZoom;
     draw();
 }
+/** Reset pan and zoom to default. */
 export function resetView() {
+    console.log("renderer resetView");
     panX = 0;
     panY = 0;
     zoom = 1;
@@ -91,18 +129,26 @@ export function resetView() {
 }
 // ── Coordinate helpers ─────────────────────────────────────────────
 const _HIDDEN = 0; // eslint-disable-line
-/** World cell → drawing space (each cell = CELL px at zoom=1). */
+/**
+ * Convert world cell coordinates to drawing-space pixels.
+ * @returns [x, y] in drawing space at current zoom.
+ */
 function toCanvas(wx, wy) {
     return [wx * CELL, wy * CELL];
 }
+/** Linear interpolation between a and b. */
 function lerp(a, b, t) {
     return a + (b - a) * t;
 }
-/** Canvas pixel → drawing coordinate. */
+/**
+ * Convert canvas pixel coordinates to drawing-space coordinates.
+ * @returns [x, y] in drawing space.
+ */
 function pixelToDraw(px, py) {
     return [(px - panX) / zoom, (py - panY) / zoom];
 }
 // ── Main draw ──────────────────────────────────────────────────────
+/** Full redraw: grid → edges → components → ghost. */
 export function draw() {
     const now = performance.now();
     const progress = animStartTime > 0 && animDuration > 0
@@ -117,6 +163,7 @@ export function draw() {
     drawGhost();
 }
 // ── Grid (dynamic visible range) ───────────────────────────────────
+/** Draw the background and grid lines (dynamic visible range). */
 function drawGrid() {
     const [dx0, dy0] = pixelToDraw(0, 0);
     const [dx1, dy1] = pixelToDraw(canvas.width, canvas.height);
@@ -144,6 +191,7 @@ function drawGrid() {
     }
 }
 // ── Edges ──────────────────────────────────────────────────────────
+/** Draw directed edges with arrowheads between component centres. */
 function drawEdges() {
     ctx.strokeStyle = "#666";
     ctx.lineWidth = 2;
@@ -181,6 +229,10 @@ function drawEdges() {
     }
 }
 // ── Components ─────────────────────────────────────────────────────
+/**
+ * Draw all component cells, ports, and items.
+ * @param progress - Animation progress 0..1 for item interpolation.
+ */
 function drawComponents(progress) {
     for (const comp of layoutComps) {
         const st = stateMap.get(comp.id);
@@ -190,6 +242,11 @@ function drawComponents(progress) {
         }
     }
 }
+/**
+ * Draw a single component's cells, outline, label, and port arrows.
+ * @param comp - The component layout data.
+ * @param st - Optional per-tick state for highlight info.
+ */
 function drawComponentCell(comp, st) {
     const { cells, color, label, id } = comp;
     if (cells.length === 0)
@@ -199,45 +256,85 @@ function drawComponentCell(comp, st) {
         ctx.fillStyle = color + "30";
         ctx.fillRect(cx, cy, CELL, CELL);
     }
-    const cellSet = new Set(cells.map(c => `${c[0]},${c[1]}`));
     ctx.strokeStyle = id === selectedId ? "#ff0" : "#333";
     ctx.lineWidth = id === selectedId ? 3 : 1.5;
     ctx.beginPath();
-    for (const c of cells) {
-        const [cx, cy] = toCanvas(c[0], c[1]);
-        if (!cellSet.has(`${c[0]},${c[1] - 1}`)) {
-            ctx.moveTo(cx, cy);
-            ctx.lineTo(cx + CELL, cy);
+    if (comp.type === "conveyor") {
+        // Path-envelope: suppress edges only between path-consecutive cells
+        for (let i = 0; i < cells.length; i++) {
+            const c = cells[i];
+            const [cx, cy] = toCanvas(c[0], c[1]);
+            const prev = i > 0 ? cells[i - 1] : null;
+            const next = i < cells.length - 1 ? cells[i + 1] : null;
+            const adjAbove = (prev !== null && prev[0] === c[0] && prev[1] === c[1] - 1)
+                || (next !== null && next[0] === c[0] && next[1] === c[1] - 1);
+            if (!adjAbove) {
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + CELL, cy);
+            }
+            const adjBelow = (prev !== null && prev[0] === c[0] && prev[1] === c[1] + 1)
+                || (next !== null && next[0] === c[0] && next[1] === c[1] + 1);
+            if (!adjBelow) {
+                ctx.moveTo(cx, cy + CELL);
+                ctx.lineTo(cx + CELL, cy + CELL);
+            }
+            const adjLeft = (prev !== null && prev[0] === c[0] - 1 && prev[1] === c[1])
+                || (next !== null && next[0] === c[0] - 1 && next[1] === c[1]);
+            if (!adjLeft) {
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx, cy + CELL);
+            }
+            const adjRight = (prev !== null && prev[0] === c[0] + 1 && prev[1] === c[1])
+                || (next !== null && next[0] === c[0] + 1 && next[1] === c[1]);
+            if (!adjRight) {
+                ctx.moveTo(cx + CELL, cy);
+                ctx.lineTo(cx + CELL, cy + CELL);
+            }
         }
-        if (!cellSet.has(`${c[0]},${c[1] + 1}`)) {
-            ctx.moveTo(cx, cy + CELL);
-            ctx.lineTo(cx + CELL, cy + CELL);
-        }
-        if (!cellSet.has(`${c[0] - 1},${c[1]}`)) {
-            ctx.moveTo(cx, cy);
-            ctx.lineTo(cx, cy + CELL);
-        }
-        if (!cellSet.has(`${c[0] + 1},${c[1]}`)) {
-            ctx.moveTo(cx + CELL, cy);
-            ctx.lineTo(cx + CELL, cy + CELL);
+    }
+    else {
+        // Spatial-envelope: suppress any edge shared with another cell
+        const cellSet = new Set(cells.map(c => `${c[0]},${c[1]}`));
+        for (const c of cells) {
+            const [cx, cy] = toCanvas(c[0], c[1]);
+            if (!cellSet.has(`${c[0]},${c[1] - 1}`)) {
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + CELL, cy);
+            }
+            if (!cellSet.has(`${c[0]},${c[1] + 1}`)) {
+                ctx.moveTo(cx, cy + CELL);
+                ctx.lineTo(cx + CELL, cy + CELL);
+            }
+            if (!cellSet.has(`${c[0] - 1},${c[1]}`)) {
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx, cy + CELL);
+            }
+            if (!cellSet.has(`${c[0] + 1},${c[1]}`)) {
+                ctx.moveTo(cx + CELL, cy);
+                ctx.lineTo(cx + CELL, cy + CELL);
+            }
         }
     }
     ctx.stroke();
-    let sumX = 0, sumY = 0;
-    for (const c of cells) {
-        sumX += c[0];
-        sumY += c[1];
+    // Label in top-left corner of the first cell (skip "Conveyor")
+    if (label !== "Conveyor") {
+        const [fcx, fcy] = toCanvas(cells[0][0], cells[0][1]);
+        ctx.fillStyle = "#222";
+        ctx.font = "bold 12px monospace";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillText(label, fcx + 3, fcy + 3);
     }
-    const [lx, ly] = toCanvas(sumX / cells.length, sumY / cells.length);
-    ctx.fillStyle = "#222";
-    ctx.font = "bold 12px monospace";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(label, lx + HALF, ly + HALF);
     for (const port of comp.ports) {
         drawPortArrow(port.cell, port.dir, port.type === "input");
     }
 }
+/**
+ * Draw a triangular port arrow on a component cell.
+ * @param cell - The port's grid cell.
+ * @param dir - Direction vector the port faces.
+ * @param isInput - True for input ports (arrow points inwards).
+ */
 function drawPortArrow(cell, dir, isInput) {
     const [cx, cy] = toCanvas(cell[0], cell[1]);
     const px = cx + HALF + dir[0] * HALF * 0.7;
@@ -253,6 +350,12 @@ function drawPortArrow(cell, dir, isInput) {
     ctx.fill();
 }
 // ── Items ──────────────────────────────────────────────────────────
+/**
+ * Draw animated item boxes for a conveyor's slot_map or a buffer.
+ * @param comp - The component layout data.
+ * @param st - Per-tick state containing slot_map or buffer.
+ * @param progress - Animation progress 0..1 for interpolation.
+ */
 function drawItems(comp, st, progress) {
     if (!st.slot_map) {
         if (st.buffer) {
@@ -341,6 +444,12 @@ function drawItems(comp, st, progress) {
     }
     ctx.restore();
 }
+/**
+ * Draw a single item box at the given canvas position.
+ * @param cx - Canvas X (top-left corner of cell).
+ * @param cy - Canvas Y (top-left corner of cell).
+ * @param item - The item to render.
+ */
 function drawItemBox(cx, cy, item) {
     ctx.save();
     ctx.translate(cx + HALF, cy + HALF);
@@ -355,12 +464,23 @@ function drawItemBox(cx, cy, item) {
     ctx.restore();
 }
 // ── Screen → world cell lookup ─────────────────────────────────────
+/**
+ * Convert screen pixel coordinates to a world grid cell.
+ * @param sx - Screen X.
+ * @param sy - Screen Y.
+ * @returns [col, row] cell or null if outside.
+ */
 export function screenToCell(sx, sy) {
     const [dx, dy] = pixelToDraw(sx, sy);
     const gx = dx / CELL;
     const gy = dy / CELL;
     return [Math.floor(gx), Math.floor(gy)];
 }
+/**
+ * Find the component occupying a given grid cell.
+ * @param cell - Grid cell coordinates.
+ * @returns The component, or null if empty.
+ */
 export function findComponentAt(cell) {
     for (const comp of layoutComps) {
         for (const c of comp.cells) {
@@ -371,8 +491,21 @@ export function findComponentAt(cell) {
     }
     return null;
 }
+/**
+ * Find a component by its numeric ID.
+ * @param id - Component ID.
+ * @returns The component, or null if not found.
+ */
 export function findComponentById(id) {
     return layoutComps.find(c => c.id === id) ?? null;
+}
+/**
+ * Get the current per-tick state for a component by ID.
+ * @param id - Component ID.
+ * @returns The ComponentState, or null if not found.
+ */
+export function getComponentState(id) {
+    return stateMap.get(id) ?? null;
 }
 // ── Ghost rendering (placement preview) ────────────────────────────
 const DIR_VEC_G = {
@@ -381,6 +514,7 @@ const DIR_VEC_G = {
     left: [-1, 0],
     right: [1, 0],
 };
+/** Render ghost/preview overlay for placement mode. */
 function drawGhost() {
     if (!ghostData)
         return;
@@ -495,6 +629,13 @@ function drawGhost() {
     }
     ctx.restore();
 }
+/**
+ * Draw a coloured arrow on a ghost cell (input=green, output=red).
+ * @param cell - Grid cell to draw on.
+ * @param dir - Direction vector.
+ * @param color - Colour for the arrow.
+ * @param isInput - True for input arrows.
+ */
 function drawGhostArrow(cell, dir, color, isInput) {
     const [cx, cy] = toCanvas(cell[0], cell[1]);
     const px = cx + HALF + dir[0] * HALF * 0.6;

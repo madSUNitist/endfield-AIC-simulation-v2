@@ -97,6 +97,20 @@ class Inventory(object):
             for slot in self._slots
         )
 
+    def snapshot(self) -> list[dict[str, str | int] | None]:
+        """Return all slot contents in order, preserving slot positions.
+
+        Each non-empty slot is ``{"type": <str>, "count": <int>}``;
+        empty slots are ``None``.
+        """
+        result: list[dict[str, str | int] | None] = []
+        for slot in self._slots:
+            if slot is None:
+                result.append(None)
+            else:
+                result.append({"type": str(slot.type), "count": slot._count})
+        return result
+
     def __len__(self) -> int:
         """Return the total number of slots (occupied or empty)."""
         return len(self._slots)

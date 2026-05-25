@@ -10,7 +10,7 @@ Three-pass construction:
 The two-phase tick runs phase1 (sinks→sources) then phase2 (sources→sinks).
 """
 
-from typing import Dict, Tuple, Set, List, Optional
+from typing import Dict, Tuple, Set, List
 
 from .units.base import Base
 from .utils import Vec
@@ -26,15 +26,19 @@ class Graph(object):
     and a two-phase (reverse/forward) tick loop.
 
     Attributes:
-        components: Map from grid origin to component instance.
-        order: Topologically-sorted coordinate list (sources first).
+        components: Component instances in placement order.
+        coord_idx: Maps grid origin to its index in ``components``.
+        order: Topologically-sorted component indices.
+        order_coords: Topologically-sorted component origins (parallel to ``order``).
     """
 
-    components: Dict[Vec, Base]
-    order: List[Vec]
+    layout: Layout
+    components: List[Base]
+    coord_idx: Dict[Vec, int]
+    order: List[int]
+    order_coords: List[Vec]
 
-    def __init__(self, layout: Layout,
-                 comp_configs: Optional[Dict[Vec, dict]] = None) -> None:
+    def __init__(self, layout: Layout) -> None:
         """Build graph from a Layout.
 
         Pass 1 — instantiate all components and record occupied cells.
@@ -44,41 +48,44 @@ class Graph(object):
 
         Args:
             layout: A fully validated Layout instance.
-            comp_configs: Optional per-origin config dicts forwarded to
-                ``get_component`` and ``get_metadata``.
         """
         self.layout = layout
-        self._comp_configs = comp_configs or {}
 
-        self.components = {}
-        self.order = []
-        comp_map: Dict[int, Vec] = {}
-        cell_to_origin: Dict[Vec, Vec] = {}
+        self.components: List[Base] = []
+        self.coord_idx: Dict[Vec, int] = {}
+        self.idx_coord: Dict[int, Vec] = {}
+        self.order: List[int] = []
+        self.order_coords: List[Vec] = []
+
+        comp_map: Dict[int, int] = {}
+        cell_origin: Dict[Vec, Vec] = {}
         origin_cells: Dict[Vec, Set[Vec]] = {}
-        cfgs = self._comp_configs
 
         # Pass 1
-        for idx, (coord, (comp_type, rotation)) in enumerate(layout.get_all_components()):
-            cfg = cfgs.get(coord, {})
-            comp = get_component(comp_type, idx, **cfg)
-            comp.component_type = comp_type
-            self.components[coord] = comp
-            comp_map[comp.id] = coord
+        for idx, pl in enumerate(layout.get_all_components()):
+            self.idx_coord[idx] = pl.pos
+            self.coord_idx[pl.pos] = idx
 
-            cov, _ = get_metadata(comp_type, **cfg)
+            comp = get_component(pl.component_type, idx, **pl.config)
+            comp.component_type = pl.component_type
+            self.components.append(comp)
+            comp_map[comp.id] = idx
+
+            cov, _ = get_metadata(pl.component_type, **pl.config)
             cells: Set[Vec] = set()
-            for offset in cov.cells(rotation):
-                cell = coord + offset
-                cell_to_origin[cell] = coord
+            for offset in cov.cells(pl.rotation):
+                cell = pl.pos + offset
+                cell_origin[cell] = pl.pos
                 cells.add(cell)
-            origin_cells[coord] = cells
+            origin_cells[pl.pos] = cells
 
         # Pass 2
         edges: Set[Tuple[Vec, Vec]] = set()
 
-        for coord, comp in self.components.items():
+        for coord, idx in self.coord_idx.items():
+            comp = self.components[idx]
             comp_type, rotation = layout[coord]
-            cfg = cfgs.get(coord, {})
+            cfg = layout.get_config(coord)
             _, ports = get_metadata(comp_type, **cfg)
 
             for port_type, port_offset, port_dir in ports:
@@ -87,15 +94,15 @@ class Graph(object):
                 port_cell = coord + world_offset
                 target = port_cell.towards(world_dir)
 
-                target_origin = cell_to_origin.get(target)
+                target_origin = cell_origin.get(target)
                 if target_origin is None:
                     continue
 
-                target_comp = self.components[target_origin]
+                target_comp = self.components[self.coord_idx[target_origin]]
                 target_type, target_rotation = layout[target_origin]
                 if not self._has_compatible_counterpart(
                     target_origin, target_type, target_rotation,
-                    coord, port_type, origin_cells, cfgs,
+                    coord, port_type, origin_cells, layout,
                 ):
                     continue
 
@@ -116,7 +123,7 @@ class Graph(object):
         self._build_order(comp_map)
 
         # Finalize: sort downstreams and build group tables
-        for comp in self.components.values():
+        for comp in self.components:
             comp.finalize()
 
     def tick(self) -> None:
@@ -127,36 +134,34 @@ class Graph(object):
         Phase 2 (reverse order, sources → sinks):
           default no-op; overridden for zero-tick forwarding.
         """
-        for coord in self.order:
-            self.components[coord].phase1()
-        for coord in reversed(self.order):
-            self.components[coord].phase2()
+        for idx in self.order:
+            self.components[idx].phase1()
+        for idx in reversed(self.order):
+            self.components[idx].phase2()
 
-    def _build_order(self, comp_map: Dict[int, Vec]) -> None:
-        """BFS layered topological sort from sinks backward toward sources.
+    def _build_order(self, comp_map: Dict[int, int]) -> None:
+        """BFS layered Kahn topological sort from sinks backward toward sources.
 
         Each layer collects all nodes whose immediate downstreams have
         already been processed, producing a sink-distance metric naturally
         aligned with topo_index (0 = sink, higher = farther from sink).
-        Within each layer, nodes are ordered by (x, y) for determinism.
+        Within each layer, nodes are ordered by placement index.
 
         Args:
-            comp_map: Maps component ID to its grid origin coordinate.
+            comp_map: Maps component ID to its index in ``components``.
         """
-        out_deg: Dict[Vec, int] = {}
-        for coord, comp in self.components.items():
-            out_deg[coord] = len(comp.downstreams)
+        n = len(self.components)
+        out_deg = [len(c.downstreams) for c in self.components]
 
-        layer = sorted(
-            (coord for coord, d in out_deg.items() if d == 0),
-            key=lambda c: (c.x, c.y),
-        )
+        layer = sorted(i for i, d in enumerate(out_deg) if d == 0)
 
         while layer:
-            next_layer: list[Vec] = []
-            for coord in layer:
-                self.order.append(coord)
-                for up in self.components[coord].upstreams:
+            next_layer: list[int] = []
+            for idx in layer:
+                self.order.append(idx)
+                self.order_coords.append(self.idx_coord[idx])
+                comp = self.components[idx]
+                for up in comp.upstreams:
                     uc = comp_map.get(up.id)
                     if uc is None:
                         continue
@@ -164,29 +169,30 @@ class Graph(object):
                         out_deg[uc] -= 1
                         if out_deg[uc] == 0:
                             next_layer.append(uc)
-            layer = sorted(next_layer, key=lambda c: (c.x, c.y))
+            layer = sorted(next_layer)
 
         # Cycle fallback: any remaining unvisited nodes
-        remaining = sorted(
-            (c for c, d in out_deg.items() if d > 0),
-            key=lambda c: (c.x, c.y),
-        )
+        remaining = sorted(i for i, d in enumerate(out_deg) if d > 0)
         if remaining:
             self.order.extend(remaining)
+            for idx in remaining:
+                self.order_coords.append(self.idx_coord[idx])
 
-        layers: dict[Vec, int] = {}
-        for coord in self.order:
-            comp = self.components[coord]
+        layers: dict[int, int] = {}
+        for idx in self.order:
+            comp = self.components[idx]
             if not comp.downstreams:
-                layers[coord] = 0
+                layers[idx] = 0
             else:
-                dc = [comp_map.get(d.id) for d in comp.downstreams]
-                dc = [c for c in dc if c is not None and c in layers]
-                # Empty dc means this is a terminal or a cycle-cut node → topo=0
-                layers[coord] = 0 if not dc else 1 + max(layers[c] for c in dc)
+                dc_ids: list[int] = []
+                for d in comp.downstreams:
+                    did = comp_map.get(d.id)
+                    if did is not None and did in layers:
+                        dc_ids.append(did)
+                layers[idx] = 0 if not dc_ids else 1 + max(layers[c] for c in dc_ids)
 
-        for coord, l in layers.items():
-            self.components[coord].topo_index = l
+        for idx, l in layers.items():
+            self.components[idx].topo_index = l
 
     @staticmethod
     def _has_compatible_counterpart(
@@ -196,7 +202,7 @@ class Graph(object):
         our_origin: Vec,
         our_port_type: LinkType,
         origin_cells: Dict[Vec, Set[Vec]],
-        cfgs: Dict[Vec, dict],
+        layout: Layout,
     ) -> bool:
         """Verify that the target component has a port of the opposite type
         facing back toward our occupied cells.
@@ -211,13 +217,14 @@ class Graph(object):
             our_origin: Grid origin of *this* component.
             our_port_type: The port type we are matching against.
             origin_cells: Maps each origin to its set of occupied cells.
-            cfgs: Per-origin config dicts.
+            layout: The Layout instance (used to look up per-component config).
 
         Returns:
             True if the target has a counter-port facing back toward us.
         """
         needed = LinkType.INPUT if our_port_type is LinkType.OUTPUT else LinkType.OUTPUT
-        _, ports = get_metadata(target_type, **cfgs.get(target_origin, {}))
+        cfg = layout.get_config(target_origin)
+        _, ports = get_metadata(target_type, **cfg)
         our_set = origin_cells.get(our_origin)
         if our_set is None:
             return False

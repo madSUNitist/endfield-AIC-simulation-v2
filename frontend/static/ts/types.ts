@@ -31,6 +31,8 @@ export interface LayoutComponent {
     item?: string;
     direction_in?: string;
     direction_out?: string;
+    inventory?: Record<string, number>;
+    stash_slots?: ({ type: string; count: number })[];
 }
 
 /** A directed edge between two components. */
@@ -66,7 +68,12 @@ export interface ComponentState {
     inventory?: number;
     count?: number;
     item_type?: string;
+    /** Per-slot inventory snapshot (protocol_stash private inventory). */
+    inventory_slots?: (InventorySlot)[];
 }
+
+/** A single slot in the shared inventory snapshot. */
+export type InventorySlot = { type: string; count: number } | null;
 
 /** Full simulation state at a given tick (from /api/tick). */
 export interface TickState {
@@ -82,7 +89,7 @@ export interface LayoutResponse {
     edges: Edge[];
     viewport: Viewport;
     tick: number;
-    inventory?: Record<string, number>;
+    inventory?: (InventorySlot)[];
     components_state?: ComponentState[];
 }
 
@@ -94,6 +101,8 @@ export interface PaletteItem {
     /** (width, height) coverage in cells. */
     coverage: [number, number];
     ports: { type: string; offset: [number, number]; direction: string }[];
+    /** Category group for hierarchical menu. */
+    category: string;
 }
 
 /** A single component placement being edited by the user. */
@@ -105,6 +114,7 @@ export interface Placement {
     path?: [number, number][];
     direction_in?: string;
     direction_out?: string;
+    inventory?: Record<string, number>;
 }
 
 /** Placement state-machine mode. */

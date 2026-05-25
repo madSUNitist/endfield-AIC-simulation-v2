@@ -1,5 +1,6 @@
 import * as Renderer from "./renderer.js";
 import { getSelectedItemType } from "./palette.js";
+import { validatePath } from "./api.js";
 // ── Direction helpers ──────────────────────────────────────────────
 const DIR_VEC = {
     up: [0, -1],
@@ -30,7 +31,10 @@ function rotateDir(dir, rot) {
     const [rx, ry] = rotateVec(v[0], v[1], rot);
     return VEC_DIR[`${rx},${ry}`] ?? dir;
 }
-/** Direction from A to B (must be axis-aligned). */
+/**
+ * Direction from A to B (must be axis-aligned).
+ * @returns Direction string or null if not axis-aligned.
+ */
 function segmentDir(A, B) {
     const dx = B[0] - A[0];
     const dy = B[1] - A[1];
@@ -44,37 +48,83 @@ function segmentDir(A, B) {
         return "right";
     return null;
 }
-/** Directions that must be excluded for direction_in / direction_out. */
-function forbiddenDirs(waypoints) {
-    if (waypoints.length < 2)
-        return { inExcluded: null, outExcluded: null };
-    const firstSeg = segmentDir(waypoints[0], waypoints[1]);
-    const lastSeg = segmentDir(waypoints[waypoints.length - 2], waypoints[waypoints.length - 1]);
-    const lastOpp = lastSeg
-        ? DIR_VEC[lastSeg]
-            ? VEC_DIR[`${-DIR_VEC[lastSeg][0]},${-DIR_VEC[lastSeg][1]}`]
-            : null
-        : null;
-    return { inExcluded: firstSeg, outExcluded: lastOpp };
+function oppositeDir(dir) {
+    const v = DIR_VEC[dir];
+    return v ? VEC_DIR[`${-v[0]},${-v[1]}`] : null;
 }
-/** Check whether placing `next` as the first waypoint (second click) is
- *  allowed given direction_in: the segment direction must not equal
- *  direction_in (would extend into the entry direction). */
+/**
+ * Build the total knot set: confirmed waypoints + ghost extension.
+ * A "knot" is a turning point (not every expanded cell).
+ */
+function buildTotalKnots(waypoints, hoverCell, cornerChoice) {
+    if (!hoverCell || waypoints.length === 0)
+        return [...waypoints];
+    const last = waypoints[waypoints.length - 1];
+    if (last[0] === hoverCell[0] && last[1] === hoverCell[1])
+        return [...waypoints];
+    const result = [...waypoints];
+    if (last[0] !== hoverCell[0] && last[1] !== hoverCell[1]) {
+        const corner = cornerChoice === 0
+            ? [last[0], hoverCell[1]]
+            : [hoverCell[0], last[1]];
+        result.push(corner);
+    }
+    result.push(hoverCell);
+    return result;
+}
+/**
+ * Determine which directions are excluded when rotating
+ * direction_in / direction_out of a conveyor.
+ *
+ * @param totalKnots  — Full knot sequence (waypoints + ghost knots).
+ * @param dirIn       — Current direction_in.
+ */
+function forbiddenDirs(totalKnots, dirIn) {
+    const inExcluded = oppositeDir(dirIn);
+    let outExcluded = null;
+    if (totalKnots.length <= 1) {
+        outExcluded = dirIn;
+    }
+    else {
+        const p = totalKnots[totalKnots.length - 2];
+        const q = totalKnots[totalKnots.length - 1];
+        const lastSegDir = segmentDir(p, q);
+        if (lastSegDir)
+            outExcluded = oppositeDir(lastSegDir);
+    }
+    return { inExcluded, outExcluded };
+}
+/**
+ * Check whether placing `next` as the first waypoint (second click) is
+ * allowed given direction_in. The segment direction must not equal
+ * direction_in (would extend into the entry direction).
+ */
 function firstSegAllowed(start, next, dirIn) {
     const d = segmentDir(start, next);
     return d !== dirIn;
 }
-/** Simple forward step in a cyclic direction sequence (no skip). */
+/**
+ * Step forward once in a cyclic direction sequence.
+ * @param current - Current direction.
+ * @param seq - Cyclic array of directions.
+ * @returns The next direction in the cycle.
+ */
 function nextInSeq(current, seq) {
     const idx = seq.indexOf(current);
     return seq[(idx + 1) % 4];
 }
-/** Find the next allowed direction in a cyclic sequence, skipping `excluded`. */
+/**
+ * Find the next allowed direction in a cyclic sequence, skipping one.
+ * @param current - Current direction.
+ * @param excluded - Direction to skip, or null.
+ * @param seq - Cyclic array of directions.
+ * @returns The first non-excluded direction found.
+ */
 function nextValidDir(current, excluded, seq) {
     if (!excluded)
         return current;
     const idx = seq.indexOf(current);
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 0; i < 4; i++) {
         const candidate = seq[(idx + i) % 4];
         if (candidate !== excluded)
             return candidate;
@@ -84,9 +134,17 @@ function nextValidDir(current, excluded, seq) {
 // ── Metadata ────────────────────────────────────────────────────────
 let typeColors = {};
 let typeMeta = {};
+/**
+ * Set per-type colour map for ghost rendering.
+ * @param colors - Type string → hex colour.
+ */
 export function setTypeColors(colors) {
     typeColors = colors;
 }
+/**
+ * Set per-type metadata (coverage, ports) for ghost rendering.
+ * @param meta - Type string → TypeMeta.
+ */
 export function setTypeMeta(meta) {
     typeMeta = meta;
 }
@@ -95,23 +153,45 @@ let mode = { mode: "idle" };
 let placements = [];
 let lastHoverCell = null;
 let onCommit = null;
+/**
+ * Initialise the placement state machine.
+ * @param cb - Called when placements change (user clicked or committed).
+ */
 export function init(cb) {
     onCommit = cb;
 }
+/**
+ * Replace the current placement list.
+ * @param p - New array of placements.
+ */
 export function setPlacements(p) {
     placements = [...p];
 }
+/**
+ * Return a copy of the current placements.
+ * @returns Current placement array.
+ */
 export function getPlacements() {
     return placements;
 }
+/**
+ * Return the current placement-mode state.
+ * @returns The active PlacementMode.
+ */
 export function getMode() {
     return mode;
 }
-/** True when conveyor placement has at least one waypoint. */
+/**
+ * True when conveyor placement has at least one waypoint.
+ * @returns Whether a conveyor path is partially placed.
+ */
 export function hasWaypoints() {
     return mode.mode === "conveyor" && mode.waypoints.length >= 1;
 }
-/** Public commit handler (called from Escape key). */
+/**
+ * Commit the current placement or cancel.
+ * Called from the Escape key handler.
+ */
 export async function handleCommit() {
     if (mode.mode === "conveyor" && mode.waypoints.length >= 1) {
         await commitConveyor();
@@ -121,6 +201,10 @@ export async function handleCommit() {
     }
 }
 // ── expandWaypoints (TS port of Python _expand) ─────────────────────
+/**
+ * Expand a list of waypoints into every grid cell along the path.
+ * @returns Relative offset cells covering the full polyline.
+ */
 function expandWaypoints(waypoints) {
     const cells = [];
     if (waypoints.length === 0)
@@ -149,6 +233,13 @@ function expandWaypoints(waypoints) {
     return cells;
 }
 // ── Ghost helpers ──────────────────────────────────────────────────
+/**
+ * Compute occupied cells for a component at a given position and rotation.
+ * @param type - Component type string.
+ * @param pos - Position to place at.
+ * @param rot - Rotation to apply.
+ * @returns Array of occupied world-cell coordinates.
+ */
 function getGhostCells(type, pos, rot) {
     const meta = typeMeta[type];
     if (!meta)
@@ -163,6 +254,13 @@ function getGhostCells(type, pos, rot) {
     }
     return cells;
 }
+/**
+ * Compute port positions for ghost rendering.
+ * @param type - Component type string.
+ * @param pos - Position to place at.
+ * @param rot - Rotation to apply.
+ * @returns Array of port descriptors with world-cell coordinates.
+ */
 function getGhostPorts(type, pos, rot) {
     const meta = typeMeta[type];
     if (!meta)
@@ -178,9 +276,14 @@ function getGhostPorts(type, pos, rot) {
     });
 }
 // ── State machine ──────────────────────────────────────────────────
+/**
+ * Select a component type to place.
+ * @param type - Component type string.
+ */
 export function selectType(type) {
     Renderer.setSelected(null);
     if (type === "conveyor") {
+        console.log("placement: selected conveyor");
         mode = {
             mode: "conveyor",
             waypoints: [],
@@ -197,16 +300,23 @@ export function selectType(type) {
     }
     refreshGhost();
 }
+/** Cancel the current placement operation and clear ghosts. */
 export function cancel() {
+    console.log("placement: cancelled");
     mode = { mode: "idle" };
     Renderer.setGhost(null);
     Renderer.setSelected(null);
 }
 // ── Hover ──────────────────────────────────────────────────────────
+/**
+ * Handle mouse-hover on a grid cell.
+ * @param cell - The cell under the cursor, or null.
+ */
 export function onHover(cell) {
     lastHoverCell = cell;
     refreshGhost();
 }
+/** Rebuild ghost/preview data based on current mode and hover cell. */
 function refreshGhost() {
     const cell = lastHoverCell;
     if (mode.mode === "idle") {
@@ -296,6 +406,11 @@ function refreshGhost() {
     }
 }
 // ── Click ──────────────────────────────────────────────────────────
+/**
+ * Handle a click on a grid cell.
+ * @param cell - The clicked cell.
+ * @param btn - Mouse button (1 = left, 2 = right).
+ */
 export async function onClick(cell, btn) {
     if (mode.mode === "idle")
         return;
@@ -321,49 +436,68 @@ export async function onClick(cell, btn) {
     }
     if (mode.mode === "conveyor") {
         const m = mode;
-        // First click after start point: enforce direction_in constraint
+        // Build proposed waypoints without mutating state yet
+        const proposed = [...m.waypoints];
         if (m.waypoints.length === 1) {
             const start = m.waypoints[0];
+            if (start[0] === cell[0] && start[1] === cell[1])
+                return;
             if (start[0] !== cell[0] && start[1] !== cell[1]) {
-                // Diagonal — pick the valid corner
+                // Diagonal — respect cornerChoice
                 const cornerA = [start[0], cell[1]];
                 const cornerB = [cell[0], start[1]];
                 const aOk = firstSegAllowed(start, cornerA, m.direction_in);
                 const bOk = firstSegAllowed(start, cornerB, m.direction_in);
                 if (!aOk && !bOk)
-                    return; // both blocked
-                const chosenCorner = aOk ? cornerA : cornerB;
-                m.waypoints.push(chosenCorner);
-                m.waypoints.push(cell);
+                    return;
+                let chosenCorner;
+                if (aOk && bOk) {
+                    chosenCorner = m.cornerChoice === 0 ? cornerA : cornerB;
+                }
+                else {
+                    chosenCorner = aOk ? cornerA : cornerB;
+                }
+                proposed.push(chosenCorner);
+                proposed.push(cell);
             }
             else {
                 if (!firstSegAllowed(start, cell, m.direction_in))
                     return;
-                m.waypoints.push(cell);
+                proposed.push(cell);
             }
-            refreshGhost();
-            return;
         }
-        if (m.waypoints.length >= 2) {
+        else if (m.waypoints.length >= 2) {
             const last = m.waypoints[m.waypoints.length - 1];
             if (last[0] === cell[0] && last[1] === cell[1])
                 return;
             if (last[0] !== cell[0] && last[1] !== cell[1]) {
-                const corner = [last[0], cell[1]];
-                m.waypoints.push(corner);
-                m.waypoints.push(cell);
+                // Diagonal — respect cornerChoice
+                const corner = m.cornerChoice === 0
+                    ? [last[0], cell[1]]
+                    : [cell[0], last[1]];
+                proposed.push(corner);
+                proposed.push(cell);
             }
             else {
-                m.waypoints.push(cell);
+                proposed.push(cell);
             }
         }
-        if (m.waypoints.length === 0) {
-            m.waypoints.push(cell);
+        else {
+            // First click
+            proposed.push(cell);
         }
+        console.log("validatePath:", proposed, m.direction_in, m.direction_out);
+        const valid = await validatePath(proposed, m.direction_in, m.direction_out);
+        if (!valid.ok) {
+            console.warn("path rejected:", valid.error);
+            return;
+        }
+        m.waypoints = proposed;
         refreshGhost();
     }
 }
 // ── Rotate (R key) ──────────────────────────────────────────────────
+/** Rotate the current placement or conveyor direction. */
 export function onRotate() {
     if (mode.mode === "simple") {
         const idx = ROT_SEQ.indexOf(mode.rot);
@@ -373,7 +507,8 @@ export function onRotate() {
     }
     if (mode.mode === "conveyor") {
         const m = mode;
-        const { inExcluded, outExcluded } = forbiddenDirs(m.waypoints);
+        const totalKnots = buildTotalKnots(m.waypoints, m.hoverCell, m.cornerChoice);
+        const { inExcluded, outExcluded } = forbiddenDirs(totalKnots, m.direction_in);
         if (m.waypoints.length === 0) {
             const next = nextInSeq(m.direction_in, DIR_IN_SEQ);
             m.direction_in = nextValidDir(next, inExcluded, DIR_IN_SEQ);
@@ -386,6 +521,7 @@ export function onRotate() {
     }
 }
 // ── Toggle corner (Tab) ─────────────────────────────────────────────
+/** Switch between the two possible corner paths for a conveyor bend. */
 export function onToggleCorner() {
     if (mode.mode !== "conveyor")
         return;
@@ -395,6 +531,7 @@ export function onToggleCorner() {
     refreshGhost();
 }
 // ── Internal ────────────────────────────────────────────────────────
+/** Finalise the current conveyor path and add it to placements. */
 async function commitConveyor() {
     if (mode.mode !== "conveyor" || mode.waypoints.length < 1)
         return;
@@ -406,6 +543,7 @@ async function commitConveyor() {
         direction_out: m.direction_out,
     };
     placements.push(p);
+    console.log("commitConveyor:", placements.length, "placements");
     mode = {
         mode: "conveyor",
         waypoints: [],

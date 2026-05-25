@@ -1,6 +1,7 @@
 """FastAPI backend: loads simulation, exposes REST API."""
 
 import json
+import logging
 import sys
 from pathlib import Path
 from typing import Any, Optional
@@ -12,8 +13,13 @@ from pydantic import BaseModel, Field
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from simulation.factory import Factory
+from simulation.placement import Placement
 from simulation.utils import Vec
+from simulation._enums import ComponentType, Rotation
 from simulation.mappings import get_metadata, get_type, get_type_name, TYPE_NAMES
+
+logger = logging.getLogger("server")
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 app = FastAPI()
 
@@ -28,6 +34,7 @@ class CompPlacement(BaseModel):
     path: Optional[list[list[int]]] = Field(None, description="Polyline waypoints (conveyor only)")
     direction_in: Optional[str] = Field(None, description="Input port direction (conveyor only)")
     direction_out: Optional[str] = Field(None, description="Output port direction (conveyor only)")
+    inventory: Optional[dict[str, int]] = Field(None, description="Initial inventory (protocol_stash only)")
 
 class LayoutRequest(BaseModel):
     """Request body for /api/layout — defines a full custom simulation."""
@@ -38,6 +45,12 @@ class TickRequest(BaseModel):
     """Request body for /api/tick."""
     n: int = Field(1, description="Number of ticks to advance")
 
+class ValidatePathRequest(BaseModel):
+    """Request body for /api/validate-path — check a single conveyor against existing layout."""
+    path: list[list[int]] = Field(..., description="Polyline waypoints of the proposed conveyor")
+    direction_in: str = Field(..., description="Input port direction")
+    direction_out: str = Field(..., description="Output port direction")
+
 # ── Global simulation state ─────────────────────────────────────────
 
 _factory: Optional[Factory] = None
@@ -47,6 +60,22 @@ _config: Optional[dict] = None
 # ── Mappings ────────────────────────────────────────────────────────
 
 _EXCLUDE_TYPES = {"belt_bridge", "item_control_port"}
+
+_CATEGORIES: dict[str, str] = {
+    "depot_loader":   "depot_access",
+    "depot_unloader": "depot_access",
+    "protocol_stash": "depot_access",
+    "conveyor":       "logistics_units",
+    "splitter":       "logistics_units",
+    "converger":      "logistics_units",
+    "belt_bridge":    "logistics_units",
+    "item_control_port": "logistics_units",
+}
+
+_CATEGORY_LABELS: dict[str, str] = {
+    "depot_access":   "Depot Access",
+    "logistics_units": "Logistics Units",
+}
 
 _COLORS: dict[str, str] = {
     "depot_loader":   "#4CAF50",
@@ -122,7 +151,8 @@ def build_layout() -> dict:
     comp_map: dict[int, list[int]] = {}
     comps: list[dict] = []
 
-    for coord, comp in _factory.graph.components.items():
+    for coord, idx in _factory.graph.coord_idx.items():
+        comp = _factory.graph.components[idx]
         ct = getattr(comp, "component_type", None)
         if ct is None:
             continue
@@ -156,6 +186,10 @@ def build_layout() -> dict:
             if "item" in entry:
                 label += f"({entry['item']})"
                 extra["item"] = entry["item"]
+            if "inventory" in entry:
+                extra["inventory"] = entry["inventory"]
+            if "stash_slots" in entry:
+                extra["stash_slots"] = entry["stash_slots"]
             if "direction_in" in entry:
                 extra["direction_in"] = entry["direction_in"]
                 extra["direction_out"] = entry["direction_out"]
@@ -174,7 +208,7 @@ def build_layout() -> dict:
         comp_map[comp.id] = [coord.x, coord.y]
 
     edges = []
-    for coord, comp in _factory.graph.components.items():
+    for comp in _factory.graph.components:
         for down in comp.downstreams:
             to_pos = comp_map.get(down.id)
             if to_pos:
@@ -267,7 +301,7 @@ def build_component_state(comp: Any, coord: Vec) -> dict:
         state["type"] = "protocol_stash"
         b = comp._buffer
         state["buffer"] = {"type": str(b.type), "id": b.id} if b is not None else None
-        state["inventory"] = comp._inv.count()
+        state["inventory_slots"] = comp._inv.snapshot()
     elif isinstance(comp, DepotLoader):
         state["type"] = "depot_loader"
         state["count"] = comp._inv.count(comp.item_type)
@@ -280,19 +314,26 @@ def build_component_state(comp: Any, coord: Vec) -> dict:
 
 
 def build_state() -> dict:
-    """Build the full tick-state response (tick number + component states).
+    """Build the full tick-state response (tick number + component states
+    + live shared inventory snapshot).
 
     Returns:
-        A dict with ``tick`` (int) and ``components`` (list of state dicts).
+        A dict with ``tick`` (int), ``components`` (list of state dicts),
+        and ``inventory`` (ordered list of slot states).
     """
     global _factory, _current_tick
     assert _factory is not None
     comps = []
-    for coord, comp in _factory.graph.components.items():
+    for coord, idx in _factory.graph.coord_idx.items():
+        comp = _factory.graph.components[idx]
         cs = build_component_state(comp, coord)
         if cs:
             comps.append(cs)
-    return {"tick": _current_tick, "components": comps}
+    return {
+        "tick": _current_tick,
+        "components": comps,
+        "inventory": _factory.inv.snapshot(),
+    }
 
 
 def build_full_response() -> dict:
@@ -312,7 +353,7 @@ def build_full_response() -> dict:
         "ok": True,
         **layout,
         "tick": state["tick"],
-        "inventory": (_config or {}).get("inventory", {}),
+        "inventory": state["inventory"],
         "components_state": state["components"],
     }
 
@@ -387,6 +428,7 @@ def component_types():
                     {"type": "input", "offset": [0, 0], "direction": "up"},
                     {"type": "output", "offset": [0, 0], "direction": "down"},
                 ],
+                "category": _CATEGORIES.get("conveyor", ""),
             })
             continue
         cov, ports = get_metadata(get_type(type_name))
@@ -405,6 +447,7 @@ def component_types():
             "color": _COLORS.get(type_name, "#888"),
             "coverage": [cw, ch],
             "ports": port_list,
+            "category": _CATEGORIES.get(type_name, ""),
         })
     return result
 
@@ -419,6 +462,7 @@ def load_case(req: dict):
     if not path.exists():
         return {"ok": False, "error": f"Case '{case_name}' not found"}
     _config = json.loads(path.read_text())
+    assert _config is not None
     _factory = Factory(_config)
     _current_tick = 0
     return build_full_response()
@@ -442,6 +486,20 @@ def set_layout(req: LayoutRequest):
             entry["rot"] = c.rot
         if c.type == "depot_loader":
             entry["item"] = c.item or "ore"
+        if c.inventory:
+            if c.type == "protocol_stash":
+                stash_slots = []
+                slot_idx = 0
+                for item_type, count in c.inventory.items():
+                    remaining = count
+                    while remaining > 0 and slot_idx < 6:
+                        per_slot = min(remaining, 50)
+                        stash_slots.append({"type": item_type, "count": per_slot})
+                        remaining -= per_slot
+                        slot_idx += 1
+                entry["stash_slots"] = stash_slots
+            else:
+                entry["inventory"] = c.inventory
         comps.append(entry)
 
     _config = {
@@ -453,9 +511,37 @@ def set_layout(req: LayoutRequest):
     try:
         _factory = Factory(_config)
         _current_tick = 0
+        logger.info("layout built: %d components", len(comps))
         return build_full_response()
     except Exception as e:
+        logger.warning("layout rejected: %s", e)
         return {"ok": False, "error": str(e)}
+
+
+@app.post("/api/validate-path")
+def validate_path(req: ValidatePathRequest):
+    """Check a single conveyor path against the existing layout for overlaps."""
+    global _factory
+    if _factory is None:
+        logger.debug("validate_path: no factory loaded")
+        return {"ok": False, "error": "No layout loaded"}
+
+    placement = Placement(
+        pos=Vec(*req.path[0]),
+        component_type=ComponentType.LOGISTICS_BELT_CONVEYOR,
+        rotation=Rotation.ROT_0,
+        config={
+            "path": req.path,
+            "direction_in": req.direction_in,
+            "direction_out": req.direction_out,
+        },
+    )
+    ok, error = _factory.layout.can_place(placement)
+    if ok:
+        logger.debug("validate_path: accepted")
+    else:
+        logger.debug("validate_path: rejected — %s", error)
+    return {"ok": ok, "error": error}
 
 
 @app.post("/api/tick")

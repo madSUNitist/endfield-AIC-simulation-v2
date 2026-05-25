@@ -2,7 +2,7 @@ import {
     fetchComponentTypes, sendLayout, tick, resetSim,
     fetchBlank, saveBlueprint, loadBlueprint as loadBlueprintApi,
 } from "./api.js";
-import type { LayoutResponse, ComponentState, Placement, Rotation } from "./types.js";
+import type { LayoutResponse, ComponentState, Placement, Rotation, InventorySlot } from "./types.js";
 import * as Renderer from "./renderer.js";
 import * as Palette from "./palette.js";
 import * as PlacementController from "./placement.js";
@@ -15,6 +15,7 @@ let nextTickTime = 0;
 let pendingInterval: number | null = null;
 let inventory: Record<string, number> = { ore: 9999 };
 let selectedCompId: number | null = null;
+let lastGoodPlacements: Placement[] = [];
 let wasDragged = false;
 let pointerDownPos = { x: 0, y: 0 };
 
@@ -45,12 +46,15 @@ async function init(): Promise<void> {
                 stopAutoPlay();
                 selectedCompId = null;
                 Renderer.setSelected(null);
+                Palette.setSelectedCompState(null);
                 PlacementController.selectType(type);
             } else {
                 PlacementController.cancel();
             }
         },
         onInventoryChanged,
+        onCompItemChanged,
+        onCompInvChanged,
     );
 
     // Load palette metadata for ghost rendering
@@ -136,6 +140,12 @@ async function init(): Promise<void> {
         PlacementController.onHover(null);
     });
 
+    document.getElementById("btn-new")!.addEventListener("click", async () => {
+        stopAutoPlay();
+        PlacementController.cancel();
+        Palette.clearSelection();
+        await loadBlank();
+    });
     document.getElementById("btn-step")!.addEventListener("click", () => stepTick());
     document.getElementById("btn-play")!.addEventListener("click", () => toggleAutoPlay());
     document.getElementById("btn-reset")!.addEventListener("click", () => resetAndRender());
@@ -166,6 +176,7 @@ async function init(): Promise<void> {
 
     window.addEventListener("resize", () => Renderer.resize());
     Renderer.resize();
+    console.log("app initialized");
 }
 
 // ── Load / state ───────────────────────────────────────────────────
@@ -183,7 +194,9 @@ async function loadBlank(): Promise<void> {
  */
 async function applyLoadResponse(res: LayoutResponse): Promise<void> {
     const placements = placementsFromResponse(res);
+    console.log("applied layout:", placements.length, "components");
     PlacementController.setPlacements(placements);
+    lastGoodPlacements = [...placements];
     selectedCompId = null;
     Renderer.resetView();
     applyLayoutResponse(res);
@@ -229,6 +242,15 @@ function placementsFromResponse(res: LayoutResponse): Placement[] {
             p.rot = c.rot;
         }
         if (c.item) p.item = c.item;
+        if (c.inventory) {
+            p.inventory = c.inventory;
+        } else if (c.stash_slots) {
+            const merged: Record<string, number> = {};
+            for (const s of c.stash_slots) {
+                merged[s.type] = (merged[s.type] || 0) + s.count;
+            }
+            p.inventory = merged;
+        }
         return p;
     });
 }
@@ -238,16 +260,30 @@ function placementsFromResponse(res: LayoutResponse): Placement[] {
  * @param res - The layout response.
  */
 function applyLayoutResponse(res: LayoutResponse): void {
+    const selPos = selectedCompId !== null
+        ? Renderer.findComponentById(selectedCompId)?.pos
+        : null;
+
     Renderer.setData(res.components, res.edges, res.viewport);
     Renderer.setSelected(null);
     const cs = res.components_state ?? [];
     Renderer.setAnimDuration(0);
     Renderer.setState(cs);
     if (res.inventory) {
-        inventory = { ...res.inventory };
-        Palette.setInventoryData(inventory);
+        Palette.setInventoryData(res.inventory);
     }
     updateInfo(res.tick, cs);
+
+    if (selPos) {
+        const newComp = res.components.find(
+            c => c.pos[0] === selPos[0] && c.pos[1] === selPos[1],
+        );
+        if (newComp) {
+            selectedCompId = newComp.id;
+            Renderer.setSelected(newComp.id);
+            refreshSelectedCompState();
+        }
+    }
 }
 
 /**
@@ -259,8 +295,11 @@ async function onPlacementsChanged(placements: Placement[]): Promise<void> {
     const res = await sendLayout(placements, inventory);
     if (!res.ok) {
         console.error("layout rejected:", res.error);
+        PlacementController.setPlacements(lastGoodPlacements);
         return;
     }
+    console.log("layout committed:", placements.length, "components");
+    lastGoodPlacements = [...placements];
     applyLayoutResponse(res);
 }
 
@@ -273,12 +312,74 @@ function onInventoryChanged(data: Record<string, number>): void {
     onPlacementsChanged(PlacementController.getPlacements());
 }
 
+/**
+ * Callback from palette when per-component item type is edited.
+ * @param compId - Component ID.
+ * @param itemType - New item type string.
+ */
+function onCompItemChanged(compId: number, itemType: string): void {
+    const placements = PlacementController.getPlacements();
+    const comp = Renderer.findComponentById(compId);
+    if (!comp) return;
+    for (const p of placements) {
+        if (comp.type === "conveyor") {
+            if (p.path && p.path[0][0] === comp.pos[0] && p.path[0][1] === comp.pos[1]) {
+                p.item = itemType;
+                break;
+            }
+        } else if (p.pos && p.pos[0] === comp.pos[0] && p.pos[1] === comp.pos[1]) {
+            p.item = itemType;
+            break;
+        }
+    }
+    PlacementController.setPlacements(placements);
+    onPlacementsChanged(placements);
+}
+
+/**
+ * Callback from palette when protocol_stash inventory slots are edited.
+ * @param slots - Ordered array of InventorySlot entries.
+ */
+function onCompInvChanged(slots: (InventorySlot)[]): void {
+    const merged: Record<string, number> = {};
+    for (const slot of slots) {
+        if (slot && slot.type) {
+            merged[slot.type] = (merged[slot.type] || 0) + slot.count;
+        }
+    }
+    if (selectedCompId === null) return;
+    const comp = Renderer.findComponentById(selectedCompId);
+    if (!comp) return;
+    const placements = PlacementController.getPlacements();
+    for (const p of placements) {
+        if (p.pos && p.pos[0] === comp.pos[0] && p.pos[1] === comp.pos[1]) {
+            p.inventory = merged;
+            break;
+        }
+    }
+    PlacementController.setPlacements(placements);
+    onPlacementsChanged(placements);
+}
+
+/** Refresh per-unit inventory panel if a component is selected. */
+function refreshSelectedCompState(): void {
+    if (selectedCompId !== null) {
+        const st = Renderer.getComponentState(selectedCompId);
+        if (st && (st.count !== undefined || st.inventory !== undefined || st.inventory_slots !== undefined)) {
+            Palette.setSelectedCompState({ id: st.id, type: st.type, count: st.count, inventory: st.inventory, inventory_slots: st.inventory_slots, item_type: st.item_type });
+        }
+    }
+}
+
 /** Advance one tick and update the renderer. */
 async function stepTick(): Promise<void> {
     const res = await tick(1);
     if (res.ok) {
+        console.log("tick:", res.tick);
         Renderer.setAnimDuration(autoPlaying ? tickInterval : 400);
         Renderer.setState(res.components);
+        if (res.inventory) Palette.setInventoryData(res.inventory);
+        refreshSelectedCompState();
         updateInfo(res.tick, res.components);
     }
 }
@@ -286,10 +387,13 @@ async function stepTick(): Promise<void> {
 /** Reset simulation to tick 0. */
 async function resetAndRender(): Promise<void> {
     stopAutoPlay();
+    console.log("reset to tick 0");
     const res = await resetSim();
     if (res.ok) {
         Renderer.setAnimDuration(0);
         Renderer.setState(res.components);
+        if (res.inventory) Palette.setInventoryData(res.inventory);
+        refreshSelectedCompState();
         updateInfo(res.tick, res.components);
     }
 }
@@ -300,8 +404,10 @@ async function resetAndRender(): Promise<void> {
 function toggleAutoPlay(): void {
     if (autoPlaying) {
         stopAutoPlay();
+        console.log("autoplay off");
     } else {
         autoPlaying = true;
+        console.log("autoplay on");
         document.getElementById("btn-play")!.textContent = "⏸";
         keepAutoPlaying();
     }
@@ -324,6 +430,8 @@ async function keepAutoPlaying(): Promise<void> {
         if (res.ok) {
             Renderer.setAnimDuration(interval);
             Renderer.setState(res.components);
+            if (res.inventory) Palette.setInventoryData(res.inventory);
+            refreshSelectedCompState();
             updateInfo(res.tick, res.components);
         }
 
@@ -359,12 +467,23 @@ async function onCanvasClick(e: MouseEvent, canvas: HTMLCanvasElement,
     if (btn === 0) {
         const existing = Renderer.findComponentAt(cell);
         if (existing) {
-            stopAutoPlay();
             selectedCompId = existing.id;
             Renderer.setSelected(existing.id);
+            const st = Renderer.getComponentState(existing.id);
+            if (st && (st.count !== undefined || st.inventory !== undefined || st.inventory_slots !== undefined)) {
+                Palette.setSelectedCompState({ id: st.id, type: st.type, count: st.count, inventory: st.inventory, inventory_slots: st.inventory_slots, item_type: st.item_type });
+            } else {
+                Palette.setSelectedCompState(null);
+            }
             Renderer.draw();
             return;
         }
+        // Click empty space → deselect
+        selectedCompId = null;
+        Renderer.setSelected(null);
+        Palette.setSelectedCompState(null);
+        Renderer.draw();
+        return;
     }
 
     // RMB when idle → clear palette
@@ -504,6 +623,7 @@ async function rotateSelectedExisting(): Promise<void> {
     }
 
     PlacementController.setPlacements(placements);
+    console.log("rotate component at", comp.pos);
     await onPlacementsChanged(placements);
 }
 
@@ -513,6 +633,7 @@ async function deleteSelected(): Promise<void> {
     const comp = Renderer.findComponentById(selectedCompId);
     if (!comp) return;
 
+    console.log("delete component at", comp.pos);
     let placements = PlacementController.getPlacements();
     placements = placements.filter(p =>
         comp.type === "conveyor"
@@ -531,6 +652,7 @@ async function deleteSelected(): Promise<void> {
 /** Download current layout as a .blueprint JSON file. */
 async function onSave(): Promise<void> {
     const data = await saveBlueprint();
+    console.log("saved blueprint:", data.length, "entries");
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);

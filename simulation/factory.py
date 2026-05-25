@@ -4,14 +4,16 @@ The Factory owns the ID generator, a shared global Inventory, a Layout
 (grid occupancy), and a Graph (port connections + topological order).
 """
 
-from typing import Any
+from typing import List
 
 from ._id_gen import IDGen
 from ._enums import ComponentType, Rotation
 from .items.inventory import Inventory
+from .items.itemstack import ItemStack
 from .mappings import get_type, get_rotation
 from .utils import Vec
 from .utils.coverage import _expand
+from .placement import Placement
 from .layout import Layout
 from .graph import Graph
 
@@ -34,27 +36,25 @@ class Factory(object):
         self.id_gen = IDGen()
         self.inv = Inventory(50, self.id_gen,
                              defaults=config.get("inventory", {}))
-        layout_dict, comp_configs = self._parse(config)
-        self.layout = Layout(layout_dict, comp_configs=comp_configs)
-        self.graph = Graph(self.layout, comp_configs=comp_configs)
+        placements = self._parse(config)
+        self.layout = Layout(placements)
+        self.graph = Graph(self.layout)
 
-    def _parse(self, config: dict) -> tuple[dict[Vec, tuple[ComponentType, Rotation]], dict[Vec, dict[str, Any]]]:
-        """Parse a config dict into layout and component-config maps.
+    def _parse(self, config: dict) -> List[Placement]:
+        """Parse a config dict into an ordered list of Placements.
 
         Args:
             config: Top-level config dict containing a ``"components"`` list.
 
         Returns:
-            A tuple ``(layout, cfgs)`` where *layout* maps each component's
-            origin to its ``(ComponentType, Rotation)`` and *cfgs* maps each
-            origin to additional init kwargs.
+            An ordered list of ``Placement`` records.  The order matches
+            the ``"components"`` list in *config*.
         """
-        layout: dict[Vec, tuple[ComponentType, Rotation]] = {}
-        cfgs: dict[Vec, dict[str, Any]] = {}
+        placements: List[Placement] = []
         for entry in config.get("components", []):
             ct = get_type(entry["type"])
             rot = get_rotation(entry.get("rot", "ROT_0"))
-            cfg: dict[str, Any] = {}
+            cfg: dict = {}
 
             if ct is ComponentType.LOGISTICS_BELT_CONVEYOR:
                 path = entry.get("path")
@@ -73,8 +73,6 @@ class Factory(object):
             else:
                 pos = Vec(*entry["pos"])
 
-            layout[pos] = (ct, rot)
-
             if ct is ComponentType.DEPOT_ACCESS_DEPOT_LOADER:
                 cfg["id_gen"] = self.id_gen
                 cfg["inventory"] = self.inv
@@ -84,11 +82,20 @@ class Factory(object):
                 cfg["inventory"] = self.inv
             elif ct is ComponentType.DEPOT_ACCESS_PROTOCOL_STASH:
                 cfg["id_gen"] = self.id_gen
-                cfg["inventory"] = Inventory(6, self.id_gen)
+                inv = Inventory(6, self.id_gen)
+                if "stash_slots" in entry:
+                    for i, slot in enumerate(entry["stash_slots"]):
+                        if i >= 6:
+                            break
+                        inv._slots[i] = ItemStack(
+                            slot["type"], self.id_gen,
+                            capacity=50, count=slot["count"],
+                        )
+                cfg["inventory"] = inv
 
-            cfgs[pos] = cfg
+            placements.append(Placement(pos, ct, rot, cfg))
 
-        return layout, cfgs
+        return placements
 
     def tick(self) -> None:
         """Advance the simulation by one tick.

@@ -14,7 +14,7 @@ def _load(name: str) -> dict:
 
 
 def _find_conveyors(f):
-    return [comp for comp in f.graph.components.values()
+    return [comp for comp in f.graph.components
             if comp.component_type is CT.LOGISTICS_BELT_CONVEYOR]
 
 

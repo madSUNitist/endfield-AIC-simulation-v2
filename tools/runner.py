@@ -33,7 +33,8 @@ def run_single(path: Path, render: str | None = None) -> None:
     cvgs: list[tuple[Converger, int, int]] = []
     splts: list[tuple[Splitter, int, int]] = []
     stshs: list[tuple[ProtocolStash, int, int]] = []
-    for coord, comp in f.graph.components.items():
+    for coord, idx in f.graph.coord_idx.items():
+        comp = f.graph.components[idx]
         if isinstance(comp, Conveyor):
             convs.append(comp)
         elif isinstance(comp, Converger):
@@ -68,7 +69,8 @@ def run_single(path: Path, render: str | None = None) -> None:
             out += f"  stash{render_stash(comp, mode)}"
         print(out)
 
-    for coord, comp in f.graph.components.items():
+    for coord, idx in f.graph.coord_idx.items():
+        comp = f.graph.components[idx]
         ct = getattr(comp, 'component_type', None)
         if ct is CT.DEPOT_ACCESS_DEPOT_UNLOADER:
             print(f"  unloader @({coord.x},{coord.y})")

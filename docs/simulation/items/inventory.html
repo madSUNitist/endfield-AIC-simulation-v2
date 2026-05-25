@@ -48,6 +48,9 @@
                         <li>
                                 <a class="function" href="#Inventory.is_full">is_full</a>
                         </li>
+                        <li>
+                                <a class="function" href="#Inventory.snapshot">snapshot</a>
+                        </li>
                 </ul>
 
             </li>
@@ -176,9 +179,23 @@ from the first slot matching an optional type filter.</p>
 </span><span id="L-97"><a href="#L-97"><span class="linenos"> 97</span></a>            <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slots</span>
 </span><span id="L-98"><a href="#L-98"><span class="linenos"> 98</span></a>        <span class="p">)</span>
 </span><span id="L-99"><a href="#L-99"><span class="linenos"> 99</span></a>
-</span><span id="L-100"><a href="#L-100"><span class="linenos">100</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-</span><span id="L-101"><a href="#L-101"><span class="linenos">101</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the total number of slots (occupied or empty).&quot;&quot;&quot;</span>
-</span><span id="L-102"><a href="#L-102"><span class="linenos">102</span></a>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_slots</span><span class="p">)</span>
+</span><span id="L-100"><a href="#L-100"><span class="linenos">100</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">snapshot</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+</span><span id="L-101"><a href="#L-101"><span class="linenos">101</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return all slot contents in order, preserving slot positions.</span>
+</span><span id="L-102"><a href="#L-102"><span class="linenos">102</span></a>
+</span><span id="L-103"><a href="#L-103"><span class="linenos">103</span></a><span class="sd">        Each non-empty slot is ``{&quot;type&quot;: &lt;str&gt;, &quot;count&quot;: &lt;int&gt;}``;</span>
+</span><span id="L-104"><a href="#L-104"><span class="linenos">104</span></a><span class="sd">        empty slots are ``None``.</span>
+</span><span id="L-105"><a href="#L-105"><span class="linenos">105</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-106"><a href="#L-106"><span class="linenos">106</span></a>        <span class="n">result</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="L-107"><a href="#L-107"><span class="linenos">107</span></a>        <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slots</span><span class="p">:</span>
+</span><span id="L-108"><a href="#L-108"><span class="linenos">108</span></a>            <span class="k">if</span> <span class="n">slot</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-109"><a href="#L-109"><span class="linenos">109</span></a>                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+</span><span id="L-110"><a href="#L-110"><span class="linenos">110</span></a>            <span class="k">else</span><span class="p">:</span>
+</span><span id="L-111"><a href="#L-111"><span class="linenos">111</span></a>                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">slot</span><span class="o">.</span><span class="n">type</span><span class="p">),</span> <span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="n">slot</span><span class="o">.</span><span class="n">_count</span><span class="p">})</span>
+</span><span id="L-112"><a href="#L-112"><span class="linenos">112</span></a>        <span class="k">return</span> <span class="n">result</span>
+</span><span id="L-113"><a href="#L-113"><span class="linenos">113</span></a>
+</span><span id="L-114"><a href="#L-114"><span class="linenos">114</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="L-115"><a href="#L-115"><span class="linenos">115</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the total number of slots (occupied or empty).&quot;&quot;&quot;</span>
+</span><span id="L-116"><a href="#L-116"><span class="linenos">116</span></a>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_slots</span><span class="p">)</span>
 </span></pre></div>
 
 
@@ -280,9 +297,23 @@ from the first slot matching an optional type filter.</p>
 </span><span id="Inventory-98"><a href="#Inventory-98"><span class="linenos"> 98</span></a>            <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slots</span>
 </span><span id="Inventory-99"><a href="#Inventory-99"><span class="linenos"> 99</span></a>        <span class="p">)</span>
 </span><span id="Inventory-100"><a href="#Inventory-100"><span class="linenos">100</span></a>
-</span><span id="Inventory-101"><a href="#Inventory-101"><span class="linenos">101</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-</span><span id="Inventory-102"><a href="#Inventory-102"><span class="linenos">102</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the total number of slots (occupied or empty).&quot;&quot;&quot;</span>
-</span><span id="Inventory-103"><a href="#Inventory-103"><span class="linenos">103</span></a>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_slots</span><span class="p">)</span>
+</span><span id="Inventory-101"><a href="#Inventory-101"><span class="linenos">101</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">snapshot</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+</span><span id="Inventory-102"><a href="#Inventory-102"><span class="linenos">102</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return all slot contents in order, preserving slot positions.</span>
+</span><span id="Inventory-103"><a href="#Inventory-103"><span class="linenos">103</span></a>
+</span><span id="Inventory-104"><a href="#Inventory-104"><span class="linenos">104</span></a><span class="sd">        Each non-empty slot is ``{&quot;type&quot;: &lt;str&gt;, &quot;count&quot;: &lt;int&gt;}``;</span>
+</span><span id="Inventory-105"><a href="#Inventory-105"><span class="linenos">105</span></a><span class="sd">        empty slots are ``None``.</span>
+</span><span id="Inventory-106"><a href="#Inventory-106"><span class="linenos">106</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="Inventory-107"><a href="#Inventory-107"><span class="linenos">107</span></a>        <span class="n">result</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="Inventory-108"><a href="#Inventory-108"><span class="linenos">108</span></a>        <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slots</span><span class="p">:</span>
+</span><span id="Inventory-109"><a href="#Inventory-109"><span class="linenos">109</span></a>            <span class="k">if</span> <span class="n">slot</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="Inventory-110"><a href="#Inventory-110"><span class="linenos">110</span></a>                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+</span><span id="Inventory-111"><a href="#Inventory-111"><span class="linenos">111</span></a>            <span class="k">else</span><span class="p">:</span>
+</span><span id="Inventory-112"><a href="#Inventory-112"><span class="linenos">112</span></a>                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">slot</span><span class="o">.</span><span class="n">type</span><span class="p">),</span> <span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="n">slot</span><span class="o">.</span><span class="n">_count</span><span class="p">})</span>
+</span><span id="Inventory-113"><a href="#Inventory-113"><span class="linenos">113</span></a>        <span class="k">return</span> <span class="n">result</span>
+</span><span id="Inventory-114"><a href="#Inventory-114"><span class="linenos">114</span></a>
+</span><span id="Inventory-115"><a href="#Inventory-115"><span class="linenos">115</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="Inventory-116"><a href="#Inventory-116"><span class="linenos">116</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the total number of slots (occupied or empty).&quot;&quot;&quot;</span>
+</span><span id="Inventory-117"><a href="#Inventory-117"><span class="linenos">117</span></a>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_slots</span><span class="p">)</span>
 </span></pre></div>
 
 
@@ -487,6 +518,41 @@ from the first slot matching an optional type filter.</p>
 <p>Returns:
     True if every slot has an ItemStack whose count has reached
     its capacity.</p>
+</div>
+
+
+                            </div>
+                            <div id="Inventory.snapshot" class="classattr">
+                                        <input id="Inventory.snapshot-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">snapshot</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">) -> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="Inventory.snapshot-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#Inventory.snapshot"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="Inventory.snapshot-101"><a href="#Inventory.snapshot-101"><span class="linenos">101</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">snapshot</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+</span><span id="Inventory.snapshot-102"><a href="#Inventory.snapshot-102"><span class="linenos">102</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return all slot contents in order, preserving slot positions.</span>
+</span><span id="Inventory.snapshot-103"><a href="#Inventory.snapshot-103"><span class="linenos">103</span></a>
+</span><span id="Inventory.snapshot-104"><a href="#Inventory.snapshot-104"><span class="linenos">104</span></a><span class="sd">        Each non-empty slot is ``{&quot;type&quot;: &lt;str&gt;, &quot;count&quot;: &lt;int&gt;}``;</span>
+</span><span id="Inventory.snapshot-105"><a href="#Inventory.snapshot-105"><span class="linenos">105</span></a><span class="sd">        empty slots are ``None``.</span>
+</span><span id="Inventory.snapshot-106"><a href="#Inventory.snapshot-106"><span class="linenos">106</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="Inventory.snapshot-107"><a href="#Inventory.snapshot-107"><span class="linenos">107</span></a>        <span class="n">result</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="Inventory.snapshot-108"><a href="#Inventory.snapshot-108"><span class="linenos">108</span></a>        <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slots</span><span class="p">:</span>
+</span><span id="Inventory.snapshot-109"><a href="#Inventory.snapshot-109"><span class="linenos">109</span></a>            <span class="k">if</span> <span class="n">slot</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="Inventory.snapshot-110"><a href="#Inventory.snapshot-110"><span class="linenos">110</span></a>                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+</span><span id="Inventory.snapshot-111"><a href="#Inventory.snapshot-111"><span class="linenos">111</span></a>            <span class="k">else</span><span class="p">:</span>
+</span><span id="Inventory.snapshot-112"><a href="#Inventory.snapshot-112"><span class="linenos">112</span></a>                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">slot</span><span class="o">.</span><span class="n">type</span><span class="p">),</span> <span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="n">slot</span><span class="o">.</span><span class="n">_count</span><span class="p">})</span>
+</span><span id="Inventory.snapshot-113"><a href="#Inventory.snapshot-113"><span class="linenos">113</span></a>        <span class="k">return</span> <span class="n">result</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Return all slot contents in order, preserving slot positions.</p>
+
+<p>Each non-empty slot is <code>{"type": &lt;str&gt;, "count": &lt;int&gt;}</code>;
+empty slots are <code>None</code>.</p>
 </div>
 
 

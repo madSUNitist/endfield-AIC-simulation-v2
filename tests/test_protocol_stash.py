@@ -15,14 +15,14 @@ CASE2 = Path(__file__).parent / "test_cases" / "protocol_stash_two_inputs.json"
 
 
 def _get_stash(f: Factory) -> ProtocolStash:
-    for coord, comp in f.graph.components.items():
+    for comp in f.graph.components:
         if isinstance(comp, ProtocolStash):
             return comp
     raise AssertionError("no ProtocolStash in graph")
 
 
 def _get_conveyor(f: Factory) -> Conveyor:
-    for coord, comp in f.graph.components.items():
+    for comp in f.graph.components:
         if isinstance(comp, Conveyor):
             return comp
     raise AssertionError("no Conveyor in graph")
@@ -144,7 +144,7 @@ def test_stash_multi_fulfill() -> None:
 
     # Get the conveyor downstream
     conv = None
-    for _, comp in f.graph.components.items():
+    for comp in f.graph.components:
         if isinstance(comp, Conveyor):
             conv = comp
             break

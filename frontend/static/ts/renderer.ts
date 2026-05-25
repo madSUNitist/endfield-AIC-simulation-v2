@@ -68,6 +68,7 @@ export function setData(
     es: Edge[],
     _vp?: Viewport,
 ): void {
+    console.log("renderer setData:", comps.length, "components,", es.length, "edges");
     layoutComps = comps;
     edges = es;
 }
@@ -77,6 +78,7 @@ export function setData(
  * @param comps - Array of per-component states after a tick.
  */
 export function setState(comps: ComponentState[]): void {
+    console.log("renderer setState:", comps.length, "states");
     prevStateMap = new Map(stateMap);
     stateMap.clear();
     for (const c of comps) {
@@ -106,6 +108,7 @@ export function setSelected(id: number | null): void {
  * @param data - Ghost data or null.
  */
 export function setGhost(data: GhostData | null): void {
+    console.log("renderer setGhost:", data ? `${data.cells.length} cells` : "clear");
     ghostData = data;
 }
 
@@ -114,6 +117,7 @@ export function resize(): void {
     const parent = canvas.parentElement!;
     canvas.width = parent.clientWidth;
     canvas.height = parent.clientHeight;
+    console.log("renderer resize:", canvas.width, "x", canvas.height);
     draw();
 }
 
@@ -147,6 +151,7 @@ export function handleWheel(deltaY: number, cx: number, cy: number): void {
 
 /** Reset pan and zoom to default. */
 export function resetView(): void {
+    console.log("renderer resetView");
     panX = 0;
     panY = 0;
     zoom = 1;
@@ -313,27 +318,64 @@ function drawComponentCell(comp: LayoutComponent, st?: ComponentState): void {
         ctx.fillRect(cx, cy, CELL, CELL);
     }
 
-    const cellSet = new Set(cells.map(c => `${c[0]},${c[1]}`));
     ctx.strokeStyle = id === selectedId ? "#ff0" : "#333";
     ctx.lineWidth = id === selectedId ? 3 : 1.5;
     ctx.beginPath();
-    for (const c of cells) {
-        const [cx, cy] = toCanvas(c[0], c[1]);
-        if (!cellSet.has(`${c[0]},${c[1] - 1}`)) {
-            ctx.moveTo(cx, cy);
-            ctx.lineTo(cx + CELL, cy);
+
+    if (comp.type === "conveyor") {
+        // Path-envelope: suppress edges only between path-consecutive cells
+        for (let i = 0; i < cells.length; i++) {
+            const c = cells[i];
+            const [cx, cy] = toCanvas(c[0], c[1]);
+            const prev = i > 0 ? cells[i - 1] : null;
+            const next = i < cells.length - 1 ? cells[i + 1] : null;
+
+            const adjAbove = (prev !== null && prev[0] === c[0] && prev[1] === c[1] - 1)
+                          || (next !== null && next[0] === c[0] && next[1] === c[1] - 1);
+            if (!adjAbove) {
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + CELL, cy);
+            }
+            const adjBelow = (prev !== null && prev[0] === c[0] && prev[1] === c[1] + 1)
+                          || (next !== null && next[0] === c[0] && next[1] === c[1] + 1);
+            if (!adjBelow) {
+                ctx.moveTo(cx, cy + CELL);
+                ctx.lineTo(cx + CELL, cy + CELL);
+            }
+            const adjLeft = (prev !== null && prev[0] === c[0] - 1 && prev[1] === c[1])
+                         || (next !== null && next[0] === c[0] - 1 && next[1] === c[1]);
+            if (!adjLeft) {
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx, cy + CELL);
+            }
+            const adjRight = (prev !== null && prev[0] === c[0] + 1 && prev[1] === c[1])
+                          || (next !== null && next[0] === c[0] + 1 && next[1] === c[1]);
+            if (!adjRight) {
+                ctx.moveTo(cx + CELL, cy);
+                ctx.lineTo(cx + CELL, cy + CELL);
+            }
         }
-        if (!cellSet.has(`${c[0]},${c[1] + 1}`)) {
-            ctx.moveTo(cx, cy + CELL);
-            ctx.lineTo(cx + CELL, cy + CELL);
-        }
-        if (!cellSet.has(`${c[0] - 1},${c[1]}`)) {
-            ctx.moveTo(cx, cy);
-            ctx.lineTo(cx, cy + CELL);
-        }
-        if (!cellSet.has(`${c[0] + 1},${c[1]}`)) {
-            ctx.moveTo(cx + CELL, cy);
-            ctx.lineTo(cx + CELL, cy + CELL);
+    } else {
+        // Spatial-envelope: suppress any edge shared with another cell
+        const cellSet = new Set(cells.map(c => `${c[0]},${c[1]}`));
+        for (const c of cells) {
+            const [cx, cy] = toCanvas(c[0], c[1]);
+            if (!cellSet.has(`${c[0]},${c[1] - 1}`)) {
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + CELL, cy);
+            }
+            if (!cellSet.has(`${c[0]},${c[1] + 1}`)) {
+                ctx.moveTo(cx, cy + CELL);
+                ctx.lineTo(cx + CELL, cy + CELL);
+            }
+            if (!cellSet.has(`${c[0] - 1},${c[1]}`)) {
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx, cy + CELL);
+            }
+            if (!cellSet.has(`${c[0] + 1},${c[1]}`)) {
+                ctx.moveTo(cx + CELL, cy);
+                ctx.lineTo(cx + CELL, cy + CELL);
+            }
         }
     }
     ctx.stroke();
@@ -536,6 +578,15 @@ export function findComponentAt(cell: [number, number]): LayoutComponent | null 
  */
 export function findComponentById(id: number): LayoutComponent | null {
     return layoutComps.find(c => c.id === id) ?? null;
+}
+
+/**
+ * Get the current per-tick state for a component by ID.
+ * @param id - Component ID.
+ * @returns The ComponentState, or null if not found.
+ */
+export function getComponentState(id: number): ComponentState | null {
+    return stateMap.get(id) ?? null;
 }
 
 // ── Ghost rendering (placement preview) ────────────────────────────

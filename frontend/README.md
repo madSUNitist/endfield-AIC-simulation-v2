@@ -1,4 +1,4 @@
-# simulation-v3 Frontend
+# simulation-v2 Frontend
 
 Web-based simulation viewer with a Canvas 2D rendering engine and FastAPI backend.
 

@@ -37,10 +37,13 @@
                                 <a class="function" href="#Layout.__init__">Layout</a>
                         </li>
                         <li>
-                                <a class="variable" href="#Layout.layout">layout</a>
+                                <a class="function" href="#Layout.get_config">get_config</a>
                         </li>
                         <li>
                                 <a class="function" href="#Layout.is_occupied">is_occupied</a>
+                        </li>
+                        <li>
+                                <a class="function" href="#Layout.can_place">can_place</a>
                         </li>
                         <li>
                                 <a class="function" href="#Layout.get_component_at">get_component_at</a>
@@ -86,109 +89,146 @@ Raise <code>ValueError</code> on construction if any two components overlap.</p>
 </span><span id="L-4"><a href="#L-4"><span class="linenos">  4</span></a><span class="sd">Raise ``ValueError`` on construction if any two components overlap.</span>
 </span><span id="L-5"><a href="#L-5"><span class="linenos">  5</span></a><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="L-6"><a href="#L-6"><span class="linenos">  6</span></a>
-</span><span id="L-7"><a href="#L-7"><span class="linenos">  7</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span>
-</span><span id="L-8"><a href="#L-8"><span class="linenos">  8</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">Vec</span>
-</span><span id="L-9"><a href="#L-9"><span class="linenos">  9</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">._enums</span><span class="w"> </span><span class="kn">import</span> <span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span>
-</span><span id="L-10"><a href="#L-10"><span class="linenos"> 10</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.mappings</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_metadata</span>
-</span><span id="L-11"><a href="#L-11"><span class="linenos"> 11</span></a>
-</span><span id="L-12"><a href="#L-12"><span class="linenos"> 12</span></a>
-</span><span id="L-13"><a href="#L-13"><span class="linenos"> 13</span></a><span class="k">class</span><span class="w"> </span><span class="nc">Layout</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-</span><span id="L-14"><a href="#L-14"><span class="linenos"> 14</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Grid-based component placement with overlap detection.</span>
-</span><span id="L-15"><a href="#L-15"><span class="linenos"> 15</span></a>
-</span><span id="L-16"><a href="#L-16"><span class="linenos"> 16</span></a><span class="sd">    Maps every occupied world cell to its component type+rotation.</span>
-</span><span id="L-17"><a href="#L-17"><span class="linenos"> 17</span></a><span class="sd">    Raises ``ValueError`` on construction if any two components overlap.</span>
-</span><span id="L-18"><a href="#L-18"><span class="linenos"> 18</span></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="L-19"><a href="#L-19"><span class="linenos"> 19</span></a>
-</span><span id="L-20"><a href="#L-20"><span class="linenos"> 20</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layout</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]],</span>
-</span><span id="L-21"><a href="#L-21"><span class="linenos"> 21</span></a>                 <span class="n">comp_configs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="L-22"><a href="#L-22"><span class="linenos"> 22</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Build occupancy grid from a component layout dict.</span>
-</span><span id="L-23"><a href="#L-23"><span class="linenos"> 23</span></a>
-</span><span id="L-24"><a href="#L-24"><span class="linenos"> 24</span></a><span class="sd">        Iterates every component&#39;s coverage cells and checks for</span>
-</span><span id="L-25"><a href="#L-25"><span class="linenos"> 25</span></a><span class="sd">        overlap before inserting into the grid.</span>
-</span><span id="L-26"><a href="#L-26"><span class="linenos"> 26</span></a>
-</span><span id="L-27"><a href="#L-27"><span class="linenos"> 27</span></a><span class="sd">        Args:</span>
-</span><span id="L-28"><a href="#L-28"><span class="linenos"> 28</span></a><span class="sd">            layout: Maps each component&#39;s origin to its</span>
-</span><span id="L-29"><a href="#L-29"><span class="linenos"> 29</span></a><span class="sd">                ``(ComponentType, Rotation)``.</span>
-</span><span id="L-30"><a href="#L-30"><span class="linenos"> 30</span></a><span class="sd">            comp_configs: Optional per-origin config dicts forwarded to</span>
-</span><span id="L-31"><a href="#L-31"><span class="linenos"> 31</span></a><span class="sd">                ``get_metadata``.</span>
-</span><span id="L-32"><a href="#L-32"><span class="linenos"> 32</span></a>
-</span><span id="L-33"><a href="#L-33"><span class="linenos"> 33</span></a><span class="sd">        Raises:</span>
-</span><span id="L-34"><a href="#L-34"><span class="linenos"> 34</span></a><span class="sd">            ValueError: If two components occupy the same cell.</span>
-</span><span id="L-35"><a href="#L-35"><span class="linenos"> 35</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="L-36"><a href="#L-36"><span class="linenos"> 36</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">layout</span>
-</span><span id="L-37"><a href="#L-37"><span class="linenos"> 37</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_meta_cfgs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="n">comp_configs</span> <span class="ow">or</span> <span class="p">{}</span>
-</span><span id="L-38"><a href="#L-38"><span class="linenos"> 38</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="L-39"><a href="#L-39"><span class="linenos"> 39</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="n">Vec</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-</span><span id="L-40"><a href="#L-40"><span class="linenos"> 40</span></a>
-</span><span id="L-41"><a href="#L-41"><span class="linenos"> 41</span></a>        <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">rotation</span><span class="p">)</span> <span class="ow">in</span> <span class="n">layout</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-</span><span id="L-42"><a href="#L-42"><span class="linenos"> 42</span></a>            <span class="n">cfg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_meta_cfgs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="p">{})</span>
-</span><span id="L-43"><a href="#L-43"><span class="linenos"> 43</span></a>            <span class="n">cov</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_metadata</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="o">**</span><span class="n">cfg</span><span class="p">)</span>
-</span><span id="L-44"><a href="#L-44"><span class="linenos"> 44</span></a>            <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">cov</span><span class="o">.</span><span class="n">cells</span><span class="p">(</span><span class="n">rotation</span><span class="p">):</span>
-</span><span id="L-45"><a href="#L-45"><span class="linenos"> 45</span></a>                <span class="n">cell</span> <span class="o">=</span> <span class="n">pos</span> <span class="o">+</span> <span class="n">offset</span>
-</span><span id="L-46"><a href="#L-46"><span class="linenos"> 46</span></a>                <span class="k">if</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">:</span>
-</span><span id="L-47"><a href="#L-47"><span class="linenos"> 47</span></a>                    <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">cell</span><span class="p">]</span>
-</span><span id="L-48"><a href="#L-48"><span class="linenos"> 48</span></a>                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Overlap at </span><span class="si">{</span><span class="n">cell</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">existing</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span><span class="w"> </span><span class="n">rotation</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="L-49"><a href="#L-49"><span class="linenos"> 49</span></a>                <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">cell</span><span class="p">]</span> <span class="o">=</span> <span class="n">comp</span><span class="p">,</span> <span class="n">rotation</span>
+</span><span id="L-7"><a href="#L-7"><span class="linenos">  7</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span>
+</span><span id="L-8"><a href="#L-8"><span class="linenos">  8</span></a>
+</span><span id="L-9"><a href="#L-9"><span class="linenos">  9</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">Vec</span>
+</span><span id="L-10"><a href="#L-10"><span class="linenos"> 10</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">._enums</span><span class="w"> </span><span class="kn">import</span> <span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span>
+</span><span id="L-11"><a href="#L-11"><span class="linenos"> 11</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.mappings</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_metadata</span>
+</span><span id="L-12"><a href="#L-12"><span class="linenos"> 12</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.placement</span><span class="w"> </span><span class="kn">import</span> <span class="n">Placement</span>
+</span><span id="L-13"><a href="#L-13"><span class="linenos"> 13</span></a>
+</span><span id="L-14"><a href="#L-14"><span class="linenos"> 14</span></a>
+</span><span id="L-15"><a href="#L-15"><span class="linenos"> 15</span></a><span class="k">class</span><span class="w"> </span><span class="nc">Layout</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+</span><span id="L-16"><a href="#L-16"><span class="linenos"> 16</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Grid-based component placement with overlap detection.</span>
+</span><span id="L-17"><a href="#L-17"><span class="linenos"> 17</span></a>
+</span><span id="L-18"><a href="#L-18"><span class="linenos"> 18</span></a><span class="sd">    Maps every occupied world cell to its component type+rotation.</span>
+</span><span id="L-19"><a href="#L-19"><span class="linenos"> 19</span></a><span class="sd">    Raises ``ValueError`` on construction if any two components overlap.</span>
+</span><span id="L-20"><a href="#L-20"><span class="linenos"> 20</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="L-21"><a href="#L-21"><span class="linenos"> 21</span></a>
+</span><span id="L-22"><a href="#L-22"><span class="linenos"> 22</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">placements</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Placement</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-23"><a href="#L-23"><span class="linenos"> 23</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Build occupancy grid from an ordered list of placements.</span>
+</span><span id="L-24"><a href="#L-24"><span class="linenos"> 24</span></a>
+</span><span id="L-25"><a href="#L-25"><span class="linenos"> 25</span></a><span class="sd">        Iterates every component&#39;s coverage cells and checks for</span>
+</span><span id="L-26"><a href="#L-26"><span class="linenos"> 26</span></a><span class="sd">        overlap before inserting into the grid.</span>
+</span><span id="L-27"><a href="#L-27"><span class="linenos"> 27</span></a>
+</span><span id="L-28"><a href="#L-28"><span class="linenos"> 28</span></a><span class="sd">        Args:</span>
+</span><span id="L-29"><a href="#L-29"><span class="linenos"> 29</span></a><span class="sd">            placements: Ordered list of component placements.</span>
+</span><span id="L-30"><a href="#L-30"><span class="linenos"> 30</span></a><span class="sd">                The order is significant — it determines component IDs.</span>
+</span><span id="L-31"><a href="#L-31"><span class="linenos"> 31</span></a>
+</span><span id="L-32"><a href="#L-32"><span class="linenos"> 32</span></a><span class="sd">        Raises:</span>
+</span><span id="L-33"><a href="#L-33"><span class="linenos"> 33</span></a><span class="sd">            ValueError: If two components occupy the same cell.</span>
+</span><span id="L-34"><a href="#L-34"><span class="linenos"> 34</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-35"><a href="#L-35"><span class="linenos"> 35</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_placements</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Placement</span><span class="p">]</span> <span class="o">=</span> <span class="n">placements</span>
+</span><span id="L-36"><a href="#L-36"><span class="linenos"> 36</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_placement_map</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Placement</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">pl</span><span class="o">.</span><span class="n">pos</span><span class="p">:</span> <span class="n">pl</span> <span class="k">for</span> <span class="n">pl</span> <span class="ow">in</span> <span class="n">placements</span><span class="p">}</span>
+</span><span id="L-37"><a href="#L-37"><span class="linenos"> 37</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="L-38"><a href="#L-38"><span class="linenos"> 38</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="n">Vec</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="L-39"><a href="#L-39"><span class="linenos"> 39</span></a>
+</span><span id="L-40"><a href="#L-40"><span class="linenos"> 40</span></a>        <span class="k">for</span> <span class="n">pl</span> <span class="ow">in</span> <span class="n">placements</span><span class="p">:</span>
+</span><span id="L-41"><a href="#L-41"><span class="linenos"> 41</span></a>            <span class="n">cov</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_metadata</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">component_type</span><span class="p">,</span> <span class="o">**</span><span class="n">pl</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+</span><span id="L-42"><a href="#L-42"><span class="linenos"> 42</span></a>            <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">cov</span><span class="o">.</span><span class="n">cells</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">rotation</span><span class="p">):</span>
+</span><span id="L-43"><a href="#L-43"><span class="linenos"> 43</span></a>                <span class="n">cell</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">pos</span> <span class="o">+</span> <span class="n">offset</span>
+</span><span id="L-44"><a href="#L-44"><span class="linenos"> 44</span></a>                <span class="k">if</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">:</span>
+</span><span id="L-45"><a href="#L-45"><span class="linenos"> 45</span></a>                    <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">cell</span><span class="p">]</span>
+</span><span id="L-46"><a href="#L-46"><span class="linenos"> 46</span></a>                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="L-47"><a href="#L-47"><span class="linenos"> 47</span></a>                        <span class="sa">f</span><span class="s2">&quot;Overlap at </span><span class="si">{</span><span class="n">cell</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">existing</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">component_type</span><span class="p">,</span><span class="w"> </span><span class="n">pl</span><span class="o">.</span><span class="n">rotation</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="L-48"><a href="#L-48"><span class="linenos"> 48</span></a>                    <span class="p">)</span>
+</span><span id="L-49"><a href="#L-49"><span class="linenos"> 49</span></a>                <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">cell</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">component_type</span><span class="p">,</span> <span class="n">pl</span><span class="o">.</span><span class="n">rotation</span><span class="p">)</span>
 </span><span id="L-50"><a href="#L-50"><span class="linenos"> 50</span></a>                <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
 </span><span id="L-51"><a href="#L-51"><span class="linenos"> 51</span></a>
-</span><span id="L-52"><a href="#L-52"><span class="linenos"> 52</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">is_occupied</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</span><span id="L-53"><a href="#L-53"><span class="linenos"> 53</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Check whether a world cell is occupied.</span>
+</span><span id="L-52"><a href="#L-52"><span class="linenos"> 52</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="L-53"><a href="#L-53"><span class="linenos"> 53</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up the config dict for a component by its origin.</span>
 </span><span id="L-54"><a href="#L-54"><span class="linenos"> 54</span></a>
 </span><span id="L-55"><a href="#L-55"><span class="linenos"> 55</span></a><span class="sd">        Args:</span>
-</span><span id="L-56"><a href="#L-56"><span class="linenos"> 56</span></a><span class="sd">            coord: World cell coordinate.</span>
+</span><span id="L-56"><a href="#L-56"><span class="linenos"> 56</span></a><span class="sd">            coord: Grid origin of the component.</span>
 </span><span id="L-57"><a href="#L-57"><span class="linenos"> 57</span></a>
 </span><span id="L-58"><a href="#L-58"><span class="linenos"> 58</span></a><span class="sd">        Returns:</span>
-</span><span id="L-59"><a href="#L-59"><span class="linenos"> 59</span></a><span class="sd">            True if the cell is occupied.</span>
+</span><span id="L-59"><a href="#L-59"><span class="linenos"> 59</span></a><span class="sd">            The config dict, or an empty dict if not found.</span>
 </span><span id="L-60"><a href="#L-60"><span class="linenos"> 60</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="L-61"><a href="#L-61"><span class="linenos"> 61</span></a>        <span class="k">return</span> <span class="n">coord</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span>
-</span><span id="L-62"><a href="#L-62"><span class="linenos"> 62</span></a>
-</span><span id="L-63"><a href="#L-63"><span class="linenos"> 63</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_component_at</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]]:</span>
-</span><span id="L-64"><a href="#L-64"><span class="linenos"> 64</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up the component occupying a cell.</span>
-</span><span id="L-65"><a href="#L-65"><span class="linenos"> 65</span></a>
-</span><span id="L-66"><a href="#L-66"><span class="linenos"> 66</span></a><span class="sd">        Args:</span>
-</span><span id="L-67"><a href="#L-67"><span class="linenos"> 67</span></a><span class="sd">            coord: World cell coordinate.</span>
-</span><span id="L-68"><a href="#L-68"><span class="linenos"> 68</span></a>
-</span><span id="L-69"><a href="#L-69"><span class="linenos"> 69</span></a><span class="sd">        Returns:</span>
-</span><span id="L-70"><a href="#L-70"><span class="linenos"> 70</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*, or None.</span>
-</span><span id="L-71"><a href="#L-71"><span class="linenos"> 71</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="L-72"><a href="#L-72"><span class="linenos"> 72</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span>
-</span><span id="L-73"><a href="#L-73"><span class="linenos"> 73</span></a>
-</span><span id="L-74"><a href="#L-74"><span class="linenos"> 74</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]</span> <span class="o">|</span> <span class="n">Any</span><span class="p">:</span>
-</span><span id="L-75"><a href="#L-75"><span class="linenos"> 75</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Dict-style get with default.</span>
-</span><span id="L-76"><a href="#L-76"><span class="linenos"> 76</span></a>
-</span><span id="L-77"><a href="#L-77"><span class="linenos"> 77</span></a><span class="sd">        Args:</span>
-</span><span id="L-78"><a href="#L-78"><span class="linenos"> 78</span></a><span class="sd">            coord: World cell coordinate.</span>
-</span><span id="L-79"><a href="#L-79"><span class="linenos"> 79</span></a><span class="sd">            default: Value returned if the cell is unoccupied.</span>
-</span><span id="L-80"><a href="#L-80"><span class="linenos"> 80</span></a>
-</span><span id="L-81"><a href="#L-81"><span class="linenos"> 81</span></a><span class="sd">        Returns:</span>
-</span><span id="L-82"><a href="#L-82"><span class="linenos"> 82</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*, or *default*.</span>
-</span><span id="L-83"><a href="#L-83"><span class="linenos"> 83</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="L-84"><a href="#L-84"><span class="linenos"> 84</span></a>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_component_at</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span>
-</span><span id="L-85"><a href="#L-85"><span class="linenos"> 85</span></a>        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="L-86"><a href="#L-86"><span class="linenos"> 86</span></a>            <span class="k">return</span> <span class="n">default</span>
-</span><span id="L-87"><a href="#L-87"><span class="linenos"> 87</span></a>        <span class="k">return</span> <span class="n">result</span>
-</span><span id="L-88"><a href="#L-88"><span class="linenos"> 88</span></a>
-</span><span id="L-89"><a href="#L-89"><span class="linenos"> 89</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]:</span>
-</span><span id="L-90"><a href="#L-90"><span class="linenos"> 90</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up a cell (raises KeyError if unoccupied).</span>
-</span><span id="L-91"><a href="#L-91"><span class="linenos"> 91</span></a>
-</span><span id="L-92"><a href="#L-92"><span class="linenos"> 92</span></a><span class="sd">        Args:</span>
-</span><span id="L-93"><a href="#L-93"><span class="linenos"> 93</span></a><span class="sd">            coord: World cell coordinate.</span>
-</span><span id="L-94"><a href="#L-94"><span class="linenos"> 94</span></a>
-</span><span id="L-95"><a href="#L-95"><span class="linenos"> 95</span></a><span class="sd">        Returns:</span>
-</span><span id="L-96"><a href="#L-96"><span class="linenos"> 96</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*.</span>
-</span><span id="L-97"><a href="#L-97"><span class="linenos"> 97</span></a>
-</span><span id="L-98"><a href="#L-98"><span class="linenos"> 98</span></a><span class="sd">        Raises:</span>
-</span><span id="L-99"><a href="#L-99"><span class="linenos"> 99</span></a><span class="sd">            KeyError: If the cell is not occupied.</span>
-</span><span id="L-100"><a href="#L-100"><span class="linenos">100</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="L-101"><a href="#L-101"><span class="linenos">101</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">coord</span><span class="p">]</span>
+</span><span id="L-61"><a href="#L-61"><span class="linenos"> 61</span></a>        <span class="n">pl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_placement_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span>
+</span><span id="L-62"><a href="#L-62"><span class="linenos"> 62</span></a>        <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">config</span> <span class="k">if</span> <span class="n">pl</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+</span><span id="L-63"><a href="#L-63"><span class="linenos"> 63</span></a>
+</span><span id="L-64"><a href="#L-64"><span class="linenos"> 64</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">is_occupied</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="L-65"><a href="#L-65"><span class="linenos"> 65</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Check whether a world cell is occupied.</span>
+</span><span id="L-66"><a href="#L-66"><span class="linenos"> 66</span></a>
+</span><span id="L-67"><a href="#L-67"><span class="linenos"> 67</span></a><span class="sd">        Args:</span>
+</span><span id="L-68"><a href="#L-68"><span class="linenos"> 68</span></a><span class="sd">            coord: World cell coordinate.</span>
+</span><span id="L-69"><a href="#L-69"><span class="linenos"> 69</span></a>
+</span><span id="L-70"><a href="#L-70"><span class="linenos"> 70</span></a><span class="sd">        Returns:</span>
+</span><span id="L-71"><a href="#L-71"><span class="linenos"> 71</span></a><span class="sd">            True if the cell is occupied.</span>
+</span><span id="L-72"><a href="#L-72"><span class="linenos"> 72</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-73"><a href="#L-73"><span class="linenos"> 73</span></a>        <span class="k">return</span> <span class="n">coord</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span>
+</span><span id="L-74"><a href="#L-74"><span class="linenos"> 74</span></a>
+</span><span id="L-75"><a href="#L-75"><span class="linenos"> 75</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">can_place</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">placement</span><span class="p">:</span> <span class="n">Placement</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+</span><span id="L-76"><a href="#L-76"><span class="linenos"> 76</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Check whether *placement* can be added without overlap.</span>
+</span><span id="L-77"><a href="#L-77"><span class="linenos"> 77</span></a>
+</span><span id="L-78"><a href="#L-78"><span class="linenos"> 78</span></a><span class="sd">        Read-only — does not modify the layout.  Also detects</span>
+</span><span id="L-79"><a href="#L-79"><span class="linenos"> 79</span></a><span class="sd">        self-intersection within the placement itself (e.g. a</span>
+</span><span id="L-80"><a href="#L-80"><span class="linenos"> 80</span></a><span class="sd">        conveyor crossing its own path).</span>
+</span><span id="L-81"><a href="#L-81"><span class="linenos"> 81</span></a>
+</span><span id="L-82"><a href="#L-82"><span class="linenos"> 82</span></a><span class="sd">        Args:</span>
+</span><span id="L-83"><a href="#L-83"><span class="linenos"> 83</span></a><span class="sd">            placement: The placement to check.</span>
+</span><span id="L-84"><a href="#L-84"><span class="linenos"> 84</span></a>
+</span><span id="L-85"><a href="#L-85"><span class="linenos"> 85</span></a><span class="sd">        Returns:</span>
+</span><span id="L-86"><a href="#L-86"><span class="linenos"> 86</span></a><span class="sd">            ``(True, &quot;&quot;)`` if the placement is valid,</span>
+</span><span id="L-87"><a href="#L-87"><span class="linenos"> 87</span></a><span class="sd">            ``(False, reason)`` if it would cause an overlap.</span>
+</span><span id="L-88"><a href="#L-88"><span class="linenos"> 88</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-89"><a href="#L-89"><span class="linenos"> 89</span></a>        <span class="n">cov</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_metadata</span><span class="p">(</span><span class="n">placement</span><span class="o">.</span><span class="n">component_type</span><span class="p">,</span> <span class="o">**</span><span class="n">placement</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+</span><span id="L-90"><a href="#L-90"><span class="linenos"> 90</span></a>        <span class="n">seen</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="n">Vec</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="L-91"><a href="#L-91"><span class="linenos"> 91</span></a>        <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">cov</span><span class="o">.</span><span class="n">cells</span><span class="p">(</span><span class="n">placement</span><span class="o">.</span><span class="n">rotation</span><span class="p">):</span>
+</span><span id="L-92"><a href="#L-92"><span class="linenos"> 92</span></a>            <span class="n">cell</span> <span class="o">=</span> <span class="n">placement</span><span class="o">.</span><span class="n">pos</span> <span class="o">+</span> <span class="n">offset</span>
+</span><span id="L-93"><a href="#L-93"><span class="linenos"> 93</span></a>            <span class="k">if</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span><span class="p">:</span>
+</span><span id="L-94"><a href="#L-94"><span class="linenos"> 94</span></a>                <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Overlap at (</span><span class="si">{</span><span class="n">cell</span><span class="o">.</span><span class="n">x</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">cell</span><span class="o">.</span><span class="n">y</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="L-95"><a href="#L-95"><span class="linenos"> 95</span></a>            <span class="k">if</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
+</span><span id="L-96"><a href="#L-96"><span class="linenos"> 96</span></a>                <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Path self-intersects at (</span><span class="si">{</span><span class="n">cell</span><span class="o">.</span><span class="n">x</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">cell</span><span class="o">.</span><span class="n">y</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="L-97"><a href="#L-97"><span class="linenos"> 97</span></a>            <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+</span><span id="L-98"><a href="#L-98"><span class="linenos"> 98</span></a>        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span>
+</span><span id="L-99"><a href="#L-99"><span class="linenos"> 99</span></a>
+</span><span id="L-100"><a href="#L-100"><span class="linenos">100</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_component_at</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]]:</span>
+</span><span id="L-101"><a href="#L-101"><span class="linenos">101</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up the component occupying a cell.</span>
 </span><span id="L-102"><a href="#L-102"><span class="linenos">102</span></a>
-</span><span id="L-103"><a href="#L-103"><span class="linenos">103</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_all_components</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]]]:</span>
-</span><span id="L-104"><a href="#L-104"><span class="linenos">104</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Yield all (origin, (type, rotation)) pairs in insertion order.</span>
+</span><span id="L-103"><a href="#L-103"><span class="linenos">103</span></a><span class="sd">        Args:</span>
+</span><span id="L-104"><a href="#L-104"><span class="linenos">104</span></a><span class="sd">            coord: World cell coordinate.</span>
 </span><span id="L-105"><a href="#L-105"><span class="linenos">105</span></a>
-</span><span id="L-106"><a href="#L-106"><span class="linenos">106</span></a><span class="sd">        Yields:</span>
-</span><span id="L-107"><a href="#L-107"><span class="linenos">107</span></a><span class="sd">            ``(Vec, (ComponentType, Rotation))`` for every component.</span>
+</span><span id="L-106"><a href="#L-106"><span class="linenos">106</span></a><span class="sd">        Returns:</span>
+</span><span id="L-107"><a href="#L-107"><span class="linenos">107</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*, or None.</span>
 </span><span id="L-108"><a href="#L-108"><span class="linenos">108</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="L-109"><a href="#L-109"><span class="linenos">109</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span id="L-109"><a href="#L-109"><span class="linenos">109</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span>
+</span><span id="L-110"><a href="#L-110"><span class="linenos">110</span></a>
+</span><span id="L-111"><a href="#L-111"><span class="linenos">111</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]</span> <span class="o">|</span> <span class="n">Any</span><span class="p">:</span>
+</span><span id="L-112"><a href="#L-112"><span class="linenos">112</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Dict-style get with default.</span>
+</span><span id="L-113"><a href="#L-113"><span class="linenos">113</span></a>
+</span><span id="L-114"><a href="#L-114"><span class="linenos">114</span></a><span class="sd">        Args:</span>
+</span><span id="L-115"><a href="#L-115"><span class="linenos">115</span></a><span class="sd">            coord: World cell coordinate.</span>
+</span><span id="L-116"><a href="#L-116"><span class="linenos">116</span></a><span class="sd">            default: Value returned if the cell is unoccupied.</span>
+</span><span id="L-117"><a href="#L-117"><span class="linenos">117</span></a>
+</span><span id="L-118"><a href="#L-118"><span class="linenos">118</span></a><span class="sd">        Returns:</span>
+</span><span id="L-119"><a href="#L-119"><span class="linenos">119</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*, or *default*.</span>
+</span><span id="L-120"><a href="#L-120"><span class="linenos">120</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-121"><a href="#L-121"><span class="linenos">121</span></a>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_component_at</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span>
+</span><span id="L-122"><a href="#L-122"><span class="linenos">122</span></a>        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-123"><a href="#L-123"><span class="linenos">123</span></a>            <span class="k">return</span> <span class="n">default</span>
+</span><span id="L-124"><a href="#L-124"><span class="linenos">124</span></a>        <span class="k">return</span> <span class="n">result</span>
+</span><span id="L-125"><a href="#L-125"><span class="linenos">125</span></a>
+</span><span id="L-126"><a href="#L-126"><span class="linenos">126</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]:</span>
+</span><span id="L-127"><a href="#L-127"><span class="linenos">127</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up a cell (raises KeyError if unoccupied).</span>
+</span><span id="L-128"><a href="#L-128"><span class="linenos">128</span></a>
+</span><span id="L-129"><a href="#L-129"><span class="linenos">129</span></a><span class="sd">        Args:</span>
+</span><span id="L-130"><a href="#L-130"><span class="linenos">130</span></a><span class="sd">            coord: World cell coordinate.</span>
+</span><span id="L-131"><a href="#L-131"><span class="linenos">131</span></a>
+</span><span id="L-132"><a href="#L-132"><span class="linenos">132</span></a><span class="sd">        Returns:</span>
+</span><span id="L-133"><a href="#L-133"><span class="linenos">133</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*.</span>
+</span><span id="L-134"><a href="#L-134"><span class="linenos">134</span></a>
+</span><span id="L-135"><a href="#L-135"><span class="linenos">135</span></a><span class="sd">        Raises:</span>
+</span><span id="L-136"><a href="#L-136"><span class="linenos">136</span></a><span class="sd">            KeyError: If the cell is not occupied.</span>
+</span><span id="L-137"><a href="#L-137"><span class="linenos">137</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-138"><a href="#L-138"><span class="linenos">138</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">coord</span><span class="p">]</span>
+</span><span id="L-139"><a href="#L-139"><span class="linenos">139</span></a>
+</span><span id="L-140"><a href="#L-140"><span class="linenos">140</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_all_components</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Placement</span><span class="p">]:</span>
+</span><span id="L-141"><a href="#L-141"><span class="linenos">141</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Yield all placements in insertion order.</span>
+</span><span id="L-142"><a href="#L-142"><span class="linenos">142</span></a>
+</span><span id="L-143"><a href="#L-143"><span class="linenos">143</span></a><span class="sd">        Yields:</span>
+</span><span id="L-144"><a href="#L-144"><span class="linenos">144</span></a><span class="sd">            ``Placement`` for every component.</span>
+</span><span id="L-145"><a href="#L-145"><span class="linenos">145</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="L-146"><a href="#L-146"><span class="linenos">146</span></a>        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_placements</span><span class="p">)</span>
 </span></pre></div>
 
 
@@ -204,103 +244,138 @@ Raise <code>ValueError</code> on construction if any two components overlap.</p>
 
     </div>
     <a class="headerlink" href="#Layout"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="Layout-14"><a href="#Layout-14"><span class="linenos"> 14</span></a><span class="k">class</span><span class="w"> </span><span class="nc">Layout</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-</span><span id="Layout-15"><a href="#Layout-15"><span class="linenos"> 15</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Grid-based component placement with overlap detection.</span>
-</span><span id="Layout-16"><a href="#Layout-16"><span class="linenos"> 16</span></a>
-</span><span id="Layout-17"><a href="#Layout-17"><span class="linenos"> 17</span></a><span class="sd">    Maps every occupied world cell to its component type+rotation.</span>
-</span><span id="Layout-18"><a href="#Layout-18"><span class="linenos"> 18</span></a><span class="sd">    Raises ``ValueError`` on construction if any two components overlap.</span>
-</span><span id="Layout-19"><a href="#Layout-19"><span class="linenos"> 19</span></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="Layout-20"><a href="#Layout-20"><span class="linenos"> 20</span></a>
-</span><span id="Layout-21"><a href="#Layout-21"><span class="linenos"> 21</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layout</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]],</span>
-</span><span id="Layout-22"><a href="#Layout-22"><span class="linenos"> 22</span></a>                 <span class="n">comp_configs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="Layout-23"><a href="#Layout-23"><span class="linenos"> 23</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Build occupancy grid from a component layout dict.</span>
-</span><span id="Layout-24"><a href="#Layout-24"><span class="linenos"> 24</span></a>
-</span><span id="Layout-25"><a href="#Layout-25"><span class="linenos"> 25</span></a><span class="sd">        Iterates every component&#39;s coverage cells and checks for</span>
-</span><span id="Layout-26"><a href="#Layout-26"><span class="linenos"> 26</span></a><span class="sd">        overlap before inserting into the grid.</span>
-</span><span id="Layout-27"><a href="#Layout-27"><span class="linenos"> 27</span></a>
-</span><span id="Layout-28"><a href="#Layout-28"><span class="linenos"> 28</span></a><span class="sd">        Args:</span>
-</span><span id="Layout-29"><a href="#Layout-29"><span class="linenos"> 29</span></a><span class="sd">            layout: Maps each component&#39;s origin to its</span>
-</span><span id="Layout-30"><a href="#Layout-30"><span class="linenos"> 30</span></a><span class="sd">                ``(ComponentType, Rotation)``.</span>
-</span><span id="Layout-31"><a href="#Layout-31"><span class="linenos"> 31</span></a><span class="sd">            comp_configs: Optional per-origin config dicts forwarded to</span>
-</span><span id="Layout-32"><a href="#Layout-32"><span class="linenos"> 32</span></a><span class="sd">                ``get_metadata``.</span>
-</span><span id="Layout-33"><a href="#Layout-33"><span class="linenos"> 33</span></a>
-</span><span id="Layout-34"><a href="#Layout-34"><span class="linenos"> 34</span></a><span class="sd">        Raises:</span>
-</span><span id="Layout-35"><a href="#Layout-35"><span class="linenos"> 35</span></a><span class="sd">            ValueError: If two components occupy the same cell.</span>
-</span><span id="Layout-36"><a href="#Layout-36"><span class="linenos"> 36</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="Layout-37"><a href="#Layout-37"><span class="linenos"> 37</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">layout</span>
-</span><span id="Layout-38"><a href="#Layout-38"><span class="linenos"> 38</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_meta_cfgs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="n">comp_configs</span> <span class="ow">or</span> <span class="p">{}</span>
-</span><span id="Layout-39"><a href="#Layout-39"><span class="linenos"> 39</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="Layout-40"><a href="#Layout-40"><span class="linenos"> 40</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="n">Vec</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-</span><span id="Layout-41"><a href="#Layout-41"><span class="linenos"> 41</span></a>
-</span><span id="Layout-42"><a href="#Layout-42"><span class="linenos"> 42</span></a>        <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">rotation</span><span class="p">)</span> <span class="ow">in</span> <span class="n">layout</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-</span><span id="Layout-43"><a href="#Layout-43"><span class="linenos"> 43</span></a>            <span class="n">cfg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_meta_cfgs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="p">{})</span>
-</span><span id="Layout-44"><a href="#Layout-44"><span class="linenos"> 44</span></a>            <span class="n">cov</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_metadata</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="o">**</span><span class="n">cfg</span><span class="p">)</span>
-</span><span id="Layout-45"><a href="#Layout-45"><span class="linenos"> 45</span></a>            <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">cov</span><span class="o">.</span><span class="n">cells</span><span class="p">(</span><span class="n">rotation</span><span class="p">):</span>
-</span><span id="Layout-46"><a href="#Layout-46"><span class="linenos"> 46</span></a>                <span class="n">cell</span> <span class="o">=</span> <span class="n">pos</span> <span class="o">+</span> <span class="n">offset</span>
-</span><span id="Layout-47"><a href="#Layout-47"><span class="linenos"> 47</span></a>                <span class="k">if</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">:</span>
-</span><span id="Layout-48"><a href="#Layout-48"><span class="linenos"> 48</span></a>                    <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">cell</span><span class="p">]</span>
-</span><span id="Layout-49"><a href="#Layout-49"><span class="linenos"> 49</span></a>                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Overlap at </span><span class="si">{</span><span class="n">cell</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">existing</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span><span class="w"> </span><span class="n">rotation</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="Layout-50"><a href="#Layout-50"><span class="linenos"> 50</span></a>                <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">cell</span><span class="p">]</span> <span class="o">=</span> <span class="n">comp</span><span class="p">,</span> <span class="n">rotation</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="Layout-16"><a href="#Layout-16"><span class="linenos"> 16</span></a><span class="k">class</span><span class="w"> </span><span class="nc">Layout</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+</span><span id="Layout-17"><a href="#Layout-17"><span class="linenos"> 17</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Grid-based component placement with overlap detection.</span>
+</span><span id="Layout-18"><a href="#Layout-18"><span class="linenos"> 18</span></a>
+</span><span id="Layout-19"><a href="#Layout-19"><span class="linenos"> 19</span></a><span class="sd">    Maps every occupied world cell to its component type+rotation.</span>
+</span><span id="Layout-20"><a href="#Layout-20"><span class="linenos"> 20</span></a><span class="sd">    Raises ``ValueError`` on construction if any two components overlap.</span>
+</span><span id="Layout-21"><a href="#Layout-21"><span class="linenos"> 21</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="Layout-22"><a href="#Layout-22"><span class="linenos"> 22</span></a>
+</span><span id="Layout-23"><a href="#Layout-23"><span class="linenos"> 23</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">placements</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Placement</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="Layout-24"><a href="#Layout-24"><span class="linenos"> 24</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Build occupancy grid from an ordered list of placements.</span>
+</span><span id="Layout-25"><a href="#Layout-25"><span class="linenos"> 25</span></a>
+</span><span id="Layout-26"><a href="#Layout-26"><span class="linenos"> 26</span></a><span class="sd">        Iterates every component&#39;s coverage cells and checks for</span>
+</span><span id="Layout-27"><a href="#Layout-27"><span class="linenos"> 27</span></a><span class="sd">        overlap before inserting into the grid.</span>
+</span><span id="Layout-28"><a href="#Layout-28"><span class="linenos"> 28</span></a>
+</span><span id="Layout-29"><a href="#Layout-29"><span class="linenos"> 29</span></a><span class="sd">        Args:</span>
+</span><span id="Layout-30"><a href="#Layout-30"><span class="linenos"> 30</span></a><span class="sd">            placements: Ordered list of component placements.</span>
+</span><span id="Layout-31"><a href="#Layout-31"><span class="linenos"> 31</span></a><span class="sd">                The order is significant — it determines component IDs.</span>
+</span><span id="Layout-32"><a href="#Layout-32"><span class="linenos"> 32</span></a>
+</span><span id="Layout-33"><a href="#Layout-33"><span class="linenos"> 33</span></a><span class="sd">        Raises:</span>
+</span><span id="Layout-34"><a href="#Layout-34"><span class="linenos"> 34</span></a><span class="sd">            ValueError: If two components occupy the same cell.</span>
+</span><span id="Layout-35"><a href="#Layout-35"><span class="linenos"> 35</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="Layout-36"><a href="#Layout-36"><span class="linenos"> 36</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_placements</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Placement</span><span class="p">]</span> <span class="o">=</span> <span class="n">placements</span>
+</span><span id="Layout-37"><a href="#Layout-37"><span class="linenos"> 37</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_placement_map</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Placement</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">pl</span><span class="o">.</span><span class="n">pos</span><span class="p">:</span> <span class="n">pl</span> <span class="k">for</span> <span class="n">pl</span> <span class="ow">in</span> <span class="n">placements</span><span class="p">}</span>
+</span><span id="Layout-38"><a href="#Layout-38"><span class="linenos"> 38</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="Layout-39"><a href="#Layout-39"><span class="linenos"> 39</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="n">Vec</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="Layout-40"><a href="#Layout-40"><span class="linenos"> 40</span></a>
+</span><span id="Layout-41"><a href="#Layout-41"><span class="linenos"> 41</span></a>        <span class="k">for</span> <span class="n">pl</span> <span class="ow">in</span> <span class="n">placements</span><span class="p">:</span>
+</span><span id="Layout-42"><a href="#Layout-42"><span class="linenos"> 42</span></a>            <span class="n">cov</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_metadata</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">component_type</span><span class="p">,</span> <span class="o">**</span><span class="n">pl</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+</span><span id="Layout-43"><a href="#Layout-43"><span class="linenos"> 43</span></a>            <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">cov</span><span class="o">.</span><span class="n">cells</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">rotation</span><span class="p">):</span>
+</span><span id="Layout-44"><a href="#Layout-44"><span class="linenos"> 44</span></a>                <span class="n">cell</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">pos</span> <span class="o">+</span> <span class="n">offset</span>
+</span><span id="Layout-45"><a href="#Layout-45"><span class="linenos"> 45</span></a>                <span class="k">if</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">:</span>
+</span><span id="Layout-46"><a href="#Layout-46"><span class="linenos"> 46</span></a>                    <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">cell</span><span class="p">]</span>
+</span><span id="Layout-47"><a href="#Layout-47"><span class="linenos"> 47</span></a>                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="Layout-48"><a href="#Layout-48"><span class="linenos"> 48</span></a>                        <span class="sa">f</span><span class="s2">&quot;Overlap at </span><span class="si">{</span><span class="n">cell</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">existing</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">component_type</span><span class="p">,</span><span class="w"> </span><span class="n">pl</span><span class="o">.</span><span class="n">rotation</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="Layout-49"><a href="#Layout-49"><span class="linenos"> 49</span></a>                    <span class="p">)</span>
+</span><span id="Layout-50"><a href="#Layout-50"><span class="linenos"> 50</span></a>                <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">cell</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">component_type</span><span class="p">,</span> <span class="n">pl</span><span class="o">.</span><span class="n">rotation</span><span class="p">)</span>
 </span><span id="Layout-51"><a href="#Layout-51"><span class="linenos"> 51</span></a>                <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
 </span><span id="Layout-52"><a href="#Layout-52"><span class="linenos"> 52</span></a>
-</span><span id="Layout-53"><a href="#Layout-53"><span class="linenos"> 53</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">is_occupied</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</span><span id="Layout-54"><a href="#Layout-54"><span class="linenos"> 54</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Check whether a world cell is occupied.</span>
+</span><span id="Layout-53"><a href="#Layout-53"><span class="linenos"> 53</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="Layout-54"><a href="#Layout-54"><span class="linenos"> 54</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up the config dict for a component by its origin.</span>
 </span><span id="Layout-55"><a href="#Layout-55"><span class="linenos"> 55</span></a>
 </span><span id="Layout-56"><a href="#Layout-56"><span class="linenos"> 56</span></a><span class="sd">        Args:</span>
-</span><span id="Layout-57"><a href="#Layout-57"><span class="linenos"> 57</span></a><span class="sd">            coord: World cell coordinate.</span>
+</span><span id="Layout-57"><a href="#Layout-57"><span class="linenos"> 57</span></a><span class="sd">            coord: Grid origin of the component.</span>
 </span><span id="Layout-58"><a href="#Layout-58"><span class="linenos"> 58</span></a>
 </span><span id="Layout-59"><a href="#Layout-59"><span class="linenos"> 59</span></a><span class="sd">        Returns:</span>
-</span><span id="Layout-60"><a href="#Layout-60"><span class="linenos"> 60</span></a><span class="sd">            True if the cell is occupied.</span>
+</span><span id="Layout-60"><a href="#Layout-60"><span class="linenos"> 60</span></a><span class="sd">            The config dict, or an empty dict if not found.</span>
 </span><span id="Layout-61"><a href="#Layout-61"><span class="linenos"> 61</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="Layout-62"><a href="#Layout-62"><span class="linenos"> 62</span></a>        <span class="k">return</span> <span class="n">coord</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span>
-</span><span id="Layout-63"><a href="#Layout-63"><span class="linenos"> 63</span></a>
-</span><span id="Layout-64"><a href="#Layout-64"><span class="linenos"> 64</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_component_at</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]]:</span>
-</span><span id="Layout-65"><a href="#Layout-65"><span class="linenos"> 65</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up the component occupying a cell.</span>
-</span><span id="Layout-66"><a href="#Layout-66"><span class="linenos"> 66</span></a>
-</span><span id="Layout-67"><a href="#Layout-67"><span class="linenos"> 67</span></a><span class="sd">        Args:</span>
-</span><span id="Layout-68"><a href="#Layout-68"><span class="linenos"> 68</span></a><span class="sd">            coord: World cell coordinate.</span>
-</span><span id="Layout-69"><a href="#Layout-69"><span class="linenos"> 69</span></a>
-</span><span id="Layout-70"><a href="#Layout-70"><span class="linenos"> 70</span></a><span class="sd">        Returns:</span>
-</span><span id="Layout-71"><a href="#Layout-71"><span class="linenos"> 71</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*, or None.</span>
-</span><span id="Layout-72"><a href="#Layout-72"><span class="linenos"> 72</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="Layout-73"><a href="#Layout-73"><span class="linenos"> 73</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span>
-</span><span id="Layout-74"><a href="#Layout-74"><span class="linenos"> 74</span></a>
-</span><span id="Layout-75"><a href="#Layout-75"><span class="linenos"> 75</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]</span> <span class="o">|</span> <span class="n">Any</span><span class="p">:</span>
-</span><span id="Layout-76"><a href="#Layout-76"><span class="linenos"> 76</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Dict-style get with default.</span>
-</span><span id="Layout-77"><a href="#Layout-77"><span class="linenos"> 77</span></a>
-</span><span id="Layout-78"><a href="#Layout-78"><span class="linenos"> 78</span></a><span class="sd">        Args:</span>
-</span><span id="Layout-79"><a href="#Layout-79"><span class="linenos"> 79</span></a><span class="sd">            coord: World cell coordinate.</span>
-</span><span id="Layout-80"><a href="#Layout-80"><span class="linenos"> 80</span></a><span class="sd">            default: Value returned if the cell is unoccupied.</span>
-</span><span id="Layout-81"><a href="#Layout-81"><span class="linenos"> 81</span></a>
-</span><span id="Layout-82"><a href="#Layout-82"><span class="linenos"> 82</span></a><span class="sd">        Returns:</span>
-</span><span id="Layout-83"><a href="#Layout-83"><span class="linenos"> 83</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*, or *default*.</span>
-</span><span id="Layout-84"><a href="#Layout-84"><span class="linenos"> 84</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="Layout-85"><a href="#Layout-85"><span class="linenos"> 85</span></a>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_component_at</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span>
-</span><span id="Layout-86"><a href="#Layout-86"><span class="linenos"> 86</span></a>        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="Layout-87"><a href="#Layout-87"><span class="linenos"> 87</span></a>            <span class="k">return</span> <span class="n">default</span>
-</span><span id="Layout-88"><a href="#Layout-88"><span class="linenos"> 88</span></a>        <span class="k">return</span> <span class="n">result</span>
-</span><span id="Layout-89"><a href="#Layout-89"><span class="linenos"> 89</span></a>
-</span><span id="Layout-90"><a href="#Layout-90"><span class="linenos"> 90</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]:</span>
-</span><span id="Layout-91"><a href="#Layout-91"><span class="linenos"> 91</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up a cell (raises KeyError if unoccupied).</span>
-</span><span id="Layout-92"><a href="#Layout-92"><span class="linenos"> 92</span></a>
-</span><span id="Layout-93"><a href="#Layout-93"><span class="linenos"> 93</span></a><span class="sd">        Args:</span>
-</span><span id="Layout-94"><a href="#Layout-94"><span class="linenos"> 94</span></a><span class="sd">            coord: World cell coordinate.</span>
-</span><span id="Layout-95"><a href="#Layout-95"><span class="linenos"> 95</span></a>
-</span><span id="Layout-96"><a href="#Layout-96"><span class="linenos"> 96</span></a><span class="sd">        Returns:</span>
-</span><span id="Layout-97"><a href="#Layout-97"><span class="linenos"> 97</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*.</span>
-</span><span id="Layout-98"><a href="#Layout-98"><span class="linenos"> 98</span></a>
-</span><span id="Layout-99"><a href="#Layout-99"><span class="linenos"> 99</span></a><span class="sd">        Raises:</span>
-</span><span id="Layout-100"><a href="#Layout-100"><span class="linenos">100</span></a><span class="sd">            KeyError: If the cell is not occupied.</span>
-</span><span id="Layout-101"><a href="#Layout-101"><span class="linenos">101</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="Layout-102"><a href="#Layout-102"><span class="linenos">102</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">coord</span><span class="p">]</span>
+</span><span id="Layout-62"><a href="#Layout-62"><span class="linenos"> 62</span></a>        <span class="n">pl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_placement_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span>
+</span><span id="Layout-63"><a href="#Layout-63"><span class="linenos"> 63</span></a>        <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">config</span> <span class="k">if</span> <span class="n">pl</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+</span><span id="Layout-64"><a href="#Layout-64"><span class="linenos"> 64</span></a>
+</span><span id="Layout-65"><a href="#Layout-65"><span class="linenos"> 65</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">is_occupied</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="Layout-66"><a href="#Layout-66"><span class="linenos"> 66</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Check whether a world cell is occupied.</span>
+</span><span id="Layout-67"><a href="#Layout-67"><span class="linenos"> 67</span></a>
+</span><span id="Layout-68"><a href="#Layout-68"><span class="linenos"> 68</span></a><span class="sd">        Args:</span>
+</span><span id="Layout-69"><a href="#Layout-69"><span class="linenos"> 69</span></a><span class="sd">            coord: World cell coordinate.</span>
+</span><span id="Layout-70"><a href="#Layout-70"><span class="linenos"> 70</span></a>
+</span><span id="Layout-71"><a href="#Layout-71"><span class="linenos"> 71</span></a><span class="sd">        Returns:</span>
+</span><span id="Layout-72"><a href="#Layout-72"><span class="linenos"> 72</span></a><span class="sd">            True if the cell is occupied.</span>
+</span><span id="Layout-73"><a href="#Layout-73"><span class="linenos"> 73</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="Layout-74"><a href="#Layout-74"><span class="linenos"> 74</span></a>        <span class="k">return</span> <span class="n">coord</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span>
+</span><span id="Layout-75"><a href="#Layout-75"><span class="linenos"> 75</span></a>
+</span><span id="Layout-76"><a href="#Layout-76"><span class="linenos"> 76</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">can_place</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">placement</span><span class="p">:</span> <span class="n">Placement</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+</span><span id="Layout-77"><a href="#Layout-77"><span class="linenos"> 77</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Check whether *placement* can be added without overlap.</span>
+</span><span id="Layout-78"><a href="#Layout-78"><span class="linenos"> 78</span></a>
+</span><span id="Layout-79"><a href="#Layout-79"><span class="linenos"> 79</span></a><span class="sd">        Read-only — does not modify the layout.  Also detects</span>
+</span><span id="Layout-80"><a href="#Layout-80"><span class="linenos"> 80</span></a><span class="sd">        self-intersection within the placement itself (e.g. a</span>
+</span><span id="Layout-81"><a href="#Layout-81"><span class="linenos"> 81</span></a><span class="sd">        conveyor crossing its own path).</span>
+</span><span id="Layout-82"><a href="#Layout-82"><span class="linenos"> 82</span></a>
+</span><span id="Layout-83"><a href="#Layout-83"><span class="linenos"> 83</span></a><span class="sd">        Args:</span>
+</span><span id="Layout-84"><a href="#Layout-84"><span class="linenos"> 84</span></a><span class="sd">            placement: The placement to check.</span>
+</span><span id="Layout-85"><a href="#Layout-85"><span class="linenos"> 85</span></a>
+</span><span id="Layout-86"><a href="#Layout-86"><span class="linenos"> 86</span></a><span class="sd">        Returns:</span>
+</span><span id="Layout-87"><a href="#Layout-87"><span class="linenos"> 87</span></a><span class="sd">            ``(True, &quot;&quot;)`` if the placement is valid,</span>
+</span><span id="Layout-88"><a href="#Layout-88"><span class="linenos"> 88</span></a><span class="sd">            ``(False, reason)`` if it would cause an overlap.</span>
+</span><span id="Layout-89"><a href="#Layout-89"><span class="linenos"> 89</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="Layout-90"><a href="#Layout-90"><span class="linenos"> 90</span></a>        <span class="n">cov</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_metadata</span><span class="p">(</span><span class="n">placement</span><span class="o">.</span><span class="n">component_type</span><span class="p">,</span> <span class="o">**</span><span class="n">placement</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+</span><span id="Layout-91"><a href="#Layout-91"><span class="linenos"> 91</span></a>        <span class="n">seen</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="n">Vec</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="Layout-92"><a href="#Layout-92"><span class="linenos"> 92</span></a>        <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">cov</span><span class="o">.</span><span class="n">cells</span><span class="p">(</span><span class="n">placement</span><span class="o">.</span><span class="n">rotation</span><span class="p">):</span>
+</span><span id="Layout-93"><a href="#Layout-93"><span class="linenos"> 93</span></a>            <span class="n">cell</span> <span class="o">=</span> <span class="n">placement</span><span class="o">.</span><span class="n">pos</span> <span class="o">+</span> <span class="n">offset</span>
+</span><span id="Layout-94"><a href="#Layout-94"><span class="linenos"> 94</span></a>            <span class="k">if</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span><span class="p">:</span>
+</span><span id="Layout-95"><a href="#Layout-95"><span class="linenos"> 95</span></a>                <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Overlap at (</span><span class="si">{</span><span class="n">cell</span><span class="o">.</span><span class="n">x</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">cell</span><span class="o">.</span><span class="n">y</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="Layout-96"><a href="#Layout-96"><span class="linenos"> 96</span></a>            <span class="k">if</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
+</span><span id="Layout-97"><a href="#Layout-97"><span class="linenos"> 97</span></a>                <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Path self-intersects at (</span><span class="si">{</span><span class="n">cell</span><span class="o">.</span><span class="n">x</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">cell</span><span class="o">.</span><span class="n">y</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="Layout-98"><a href="#Layout-98"><span class="linenos"> 98</span></a>            <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+</span><span id="Layout-99"><a href="#Layout-99"><span class="linenos"> 99</span></a>        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span>
+</span><span id="Layout-100"><a href="#Layout-100"><span class="linenos">100</span></a>
+</span><span id="Layout-101"><a href="#Layout-101"><span class="linenos">101</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_component_at</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]]:</span>
+</span><span id="Layout-102"><a href="#Layout-102"><span class="linenos">102</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up the component occupying a cell.</span>
 </span><span id="Layout-103"><a href="#Layout-103"><span class="linenos">103</span></a>
-</span><span id="Layout-104"><a href="#Layout-104"><span class="linenos">104</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_all_components</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]]]:</span>
-</span><span id="Layout-105"><a href="#Layout-105"><span class="linenos">105</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Yield all (origin, (type, rotation)) pairs in insertion order.</span>
+</span><span id="Layout-104"><a href="#Layout-104"><span class="linenos">104</span></a><span class="sd">        Args:</span>
+</span><span id="Layout-105"><a href="#Layout-105"><span class="linenos">105</span></a><span class="sd">            coord: World cell coordinate.</span>
 </span><span id="Layout-106"><a href="#Layout-106"><span class="linenos">106</span></a>
-</span><span id="Layout-107"><a href="#Layout-107"><span class="linenos">107</span></a><span class="sd">        Yields:</span>
-</span><span id="Layout-108"><a href="#Layout-108"><span class="linenos">108</span></a><span class="sd">            ``(Vec, (ComponentType, Rotation))`` for every component.</span>
+</span><span id="Layout-107"><a href="#Layout-107"><span class="linenos">107</span></a><span class="sd">        Returns:</span>
+</span><span id="Layout-108"><a href="#Layout-108"><span class="linenos">108</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*, or None.</span>
 </span><span id="Layout-109"><a href="#Layout-109"><span class="linenos">109</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="Layout-110"><a href="#Layout-110"><span class="linenos">110</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span id="Layout-110"><a href="#Layout-110"><span class="linenos">110</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span>
+</span><span id="Layout-111"><a href="#Layout-111"><span class="linenos">111</span></a>
+</span><span id="Layout-112"><a href="#Layout-112"><span class="linenos">112</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]</span> <span class="o">|</span> <span class="n">Any</span><span class="p">:</span>
+</span><span id="Layout-113"><a href="#Layout-113"><span class="linenos">113</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Dict-style get with default.</span>
+</span><span id="Layout-114"><a href="#Layout-114"><span class="linenos">114</span></a>
+</span><span id="Layout-115"><a href="#Layout-115"><span class="linenos">115</span></a><span class="sd">        Args:</span>
+</span><span id="Layout-116"><a href="#Layout-116"><span class="linenos">116</span></a><span class="sd">            coord: World cell coordinate.</span>
+</span><span id="Layout-117"><a href="#Layout-117"><span class="linenos">117</span></a><span class="sd">            default: Value returned if the cell is unoccupied.</span>
+</span><span id="Layout-118"><a href="#Layout-118"><span class="linenos">118</span></a>
+</span><span id="Layout-119"><a href="#Layout-119"><span class="linenos">119</span></a><span class="sd">        Returns:</span>
+</span><span id="Layout-120"><a href="#Layout-120"><span class="linenos">120</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*, or *default*.</span>
+</span><span id="Layout-121"><a href="#Layout-121"><span class="linenos">121</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="Layout-122"><a href="#Layout-122"><span class="linenos">122</span></a>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_component_at</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span>
+</span><span id="Layout-123"><a href="#Layout-123"><span class="linenos">123</span></a>        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="Layout-124"><a href="#Layout-124"><span class="linenos">124</span></a>            <span class="k">return</span> <span class="n">default</span>
+</span><span id="Layout-125"><a href="#Layout-125"><span class="linenos">125</span></a>        <span class="k">return</span> <span class="n">result</span>
+</span><span id="Layout-126"><a href="#Layout-126"><span class="linenos">126</span></a>
+</span><span id="Layout-127"><a href="#Layout-127"><span class="linenos">127</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]:</span>
+</span><span id="Layout-128"><a href="#Layout-128"><span class="linenos">128</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up a cell (raises KeyError if unoccupied).</span>
+</span><span id="Layout-129"><a href="#Layout-129"><span class="linenos">129</span></a>
+</span><span id="Layout-130"><a href="#Layout-130"><span class="linenos">130</span></a><span class="sd">        Args:</span>
+</span><span id="Layout-131"><a href="#Layout-131"><span class="linenos">131</span></a><span class="sd">            coord: World cell coordinate.</span>
+</span><span id="Layout-132"><a href="#Layout-132"><span class="linenos">132</span></a>
+</span><span id="Layout-133"><a href="#Layout-133"><span class="linenos">133</span></a><span class="sd">        Returns:</span>
+</span><span id="Layout-134"><a href="#Layout-134"><span class="linenos">134</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*.</span>
+</span><span id="Layout-135"><a href="#Layout-135"><span class="linenos">135</span></a>
+</span><span id="Layout-136"><a href="#Layout-136"><span class="linenos">136</span></a><span class="sd">        Raises:</span>
+</span><span id="Layout-137"><a href="#Layout-137"><span class="linenos">137</span></a><span class="sd">            KeyError: If the cell is not occupied.</span>
+</span><span id="Layout-138"><a href="#Layout-138"><span class="linenos">138</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="Layout-139"><a href="#Layout-139"><span class="linenos">139</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">coord</span><span class="p">]</span>
+</span><span id="Layout-140"><a href="#Layout-140"><span class="linenos">140</span></a>
+</span><span id="Layout-141"><a href="#Layout-141"><span class="linenos">141</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_all_components</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Placement</span><span class="p">]:</span>
+</span><span id="Layout-142"><a href="#Layout-142"><span class="linenos">142</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Yield all placements in insertion order.</span>
+</span><span id="Layout-143"><a href="#Layout-143"><span class="linenos">143</span></a>
+</span><span id="Layout-144"><a href="#Layout-144"><span class="linenos">144</span></a><span class="sd">        Yields:</span>
+</span><span id="Layout-145"><a href="#Layout-145"><span class="linenos">145</span></a><span class="sd">            ``Placement`` for every component.</span>
+</span><span id="Layout-146"><a href="#Layout-146"><span class="linenos">146</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="Layout-147"><a href="#Layout-147"><span class="linenos">147</span></a>        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_placements</span><span class="p">)</span>
 </span></pre></div>
 
 
@@ -315,56 +390,52 @@ Raises <code>ValueError</code> on construction if any two components overlap.</p
                                         <input id="Layout.__init__-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 <div class="attr function">
             
-        <span class="name">Layout</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="n">layout</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n"><a href="utils/vec.html#Vec">simulation.utils.vec.Vec</a></span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n"><a href="_enums.html#ComponentType">simulation._enums.ComponentType</a></span><span class="p">,</span> <span class="n"><a href="_enums.html#Rotation">simulation._enums.Rotation</a></span><span class="p">]]</span>,</span><span class="param">	<span class="n">comp_configs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="n"><a href="utils/vec.html#Vec">simulation.utils.vec.Vec</a></span><span class="p">,</span> <span class="nb">dict</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span></span>)</span>
+        <span class="name">Layout</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">placements</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n"><a href="placement.html#Placement">simulation.placement.Placement</a></span><span class="p">]</span></span>)</span>
 
                 <label class="view-source-button" for="Layout.__init__-view-source"><span>View Source</span></label>
 
     </div>
     <a class="headerlink" href="#Layout.__init__"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="Layout.__init__-21"><a href="#Layout.__init__-21"><span class="linenos">21</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layout</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]],</span>
-</span><span id="Layout.__init__-22"><a href="#Layout.__init__-22"><span class="linenos">22</span></a>                 <span class="n">comp_configs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="Layout.__init__-23"><a href="#Layout.__init__-23"><span class="linenos">23</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Build occupancy grid from a component layout dict.</span>
-</span><span id="Layout.__init__-24"><a href="#Layout.__init__-24"><span class="linenos">24</span></a>
-</span><span id="Layout.__init__-25"><a href="#Layout.__init__-25"><span class="linenos">25</span></a><span class="sd">        Iterates every component&#39;s coverage cells and checks for</span>
-</span><span id="Layout.__init__-26"><a href="#Layout.__init__-26"><span class="linenos">26</span></a><span class="sd">        overlap before inserting into the grid.</span>
-</span><span id="Layout.__init__-27"><a href="#Layout.__init__-27"><span class="linenos">27</span></a>
-</span><span id="Layout.__init__-28"><a href="#Layout.__init__-28"><span class="linenos">28</span></a><span class="sd">        Args:</span>
-</span><span id="Layout.__init__-29"><a href="#Layout.__init__-29"><span class="linenos">29</span></a><span class="sd">            layout: Maps each component&#39;s origin to its</span>
-</span><span id="Layout.__init__-30"><a href="#Layout.__init__-30"><span class="linenos">30</span></a><span class="sd">                ``(ComponentType, Rotation)``.</span>
-</span><span id="Layout.__init__-31"><a href="#Layout.__init__-31"><span class="linenos">31</span></a><span class="sd">            comp_configs: Optional per-origin config dicts forwarded to</span>
-</span><span id="Layout.__init__-32"><a href="#Layout.__init__-32"><span class="linenos">32</span></a><span class="sd">                ``get_metadata``.</span>
-</span><span id="Layout.__init__-33"><a href="#Layout.__init__-33"><span class="linenos">33</span></a>
-</span><span id="Layout.__init__-34"><a href="#Layout.__init__-34"><span class="linenos">34</span></a><span class="sd">        Raises:</span>
-</span><span id="Layout.__init__-35"><a href="#Layout.__init__-35"><span class="linenos">35</span></a><span class="sd">            ValueError: If two components occupy the same cell.</span>
-</span><span id="Layout.__init__-36"><a href="#Layout.__init__-36"><span class="linenos">36</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="Layout.__init__-37"><a href="#Layout.__init__-37"><span class="linenos">37</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">layout</span>
-</span><span id="Layout.__init__-38"><a href="#Layout.__init__-38"><span class="linenos">38</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_meta_cfgs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="n">comp_configs</span> <span class="ow">or</span> <span class="p">{}</span>
-</span><span id="Layout.__init__-39"><a href="#Layout.__init__-39"><span class="linenos">39</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="Layout.__init__-40"><a href="#Layout.__init__-40"><span class="linenos">40</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="n">Vec</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-</span><span id="Layout.__init__-41"><a href="#Layout.__init__-41"><span class="linenos">41</span></a>
-</span><span id="Layout.__init__-42"><a href="#Layout.__init__-42"><span class="linenos">42</span></a>        <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">rotation</span><span class="p">)</span> <span class="ow">in</span> <span class="n">layout</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-</span><span id="Layout.__init__-43"><a href="#Layout.__init__-43"><span class="linenos">43</span></a>            <span class="n">cfg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_meta_cfgs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="p">{})</span>
-</span><span id="Layout.__init__-44"><a href="#Layout.__init__-44"><span class="linenos">44</span></a>            <span class="n">cov</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_metadata</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="o">**</span><span class="n">cfg</span><span class="p">)</span>
-</span><span id="Layout.__init__-45"><a href="#Layout.__init__-45"><span class="linenos">45</span></a>            <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">cov</span><span class="o">.</span><span class="n">cells</span><span class="p">(</span><span class="n">rotation</span><span class="p">):</span>
-</span><span id="Layout.__init__-46"><a href="#Layout.__init__-46"><span class="linenos">46</span></a>                <span class="n">cell</span> <span class="o">=</span> <span class="n">pos</span> <span class="o">+</span> <span class="n">offset</span>
-</span><span id="Layout.__init__-47"><a href="#Layout.__init__-47"><span class="linenos">47</span></a>                <span class="k">if</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">:</span>
-</span><span id="Layout.__init__-48"><a href="#Layout.__init__-48"><span class="linenos">48</span></a>                    <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">cell</span><span class="p">]</span>
-</span><span id="Layout.__init__-49"><a href="#Layout.__init__-49"><span class="linenos">49</span></a>                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Overlap at </span><span class="si">{</span><span class="n">cell</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">existing</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span><span class="w"> </span><span class="n">rotation</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="Layout.__init__-50"><a href="#Layout.__init__-50"><span class="linenos">50</span></a>                <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">cell</span><span class="p">]</span> <span class="o">=</span> <span class="n">comp</span><span class="p">,</span> <span class="n">rotation</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="Layout.__init__-23"><a href="#Layout.__init__-23"><span class="linenos">23</span></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">placements</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Placement</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="Layout.__init__-24"><a href="#Layout.__init__-24"><span class="linenos">24</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Build occupancy grid from an ordered list of placements.</span>
+</span><span id="Layout.__init__-25"><a href="#Layout.__init__-25"><span class="linenos">25</span></a>
+</span><span id="Layout.__init__-26"><a href="#Layout.__init__-26"><span class="linenos">26</span></a><span class="sd">        Iterates every component&#39;s coverage cells and checks for</span>
+</span><span id="Layout.__init__-27"><a href="#Layout.__init__-27"><span class="linenos">27</span></a><span class="sd">        overlap before inserting into the grid.</span>
+</span><span id="Layout.__init__-28"><a href="#Layout.__init__-28"><span class="linenos">28</span></a>
+</span><span id="Layout.__init__-29"><a href="#Layout.__init__-29"><span class="linenos">29</span></a><span class="sd">        Args:</span>
+</span><span id="Layout.__init__-30"><a href="#Layout.__init__-30"><span class="linenos">30</span></a><span class="sd">            placements: Ordered list of component placements.</span>
+</span><span id="Layout.__init__-31"><a href="#Layout.__init__-31"><span class="linenos">31</span></a><span class="sd">                The order is significant — it determines component IDs.</span>
+</span><span id="Layout.__init__-32"><a href="#Layout.__init__-32"><span class="linenos">32</span></a>
+</span><span id="Layout.__init__-33"><a href="#Layout.__init__-33"><span class="linenos">33</span></a><span class="sd">        Raises:</span>
+</span><span id="Layout.__init__-34"><a href="#Layout.__init__-34"><span class="linenos">34</span></a><span class="sd">            ValueError: If two components occupy the same cell.</span>
+</span><span id="Layout.__init__-35"><a href="#Layout.__init__-35"><span class="linenos">35</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="Layout.__init__-36"><a href="#Layout.__init__-36"><span class="linenos">36</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_placements</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Placement</span><span class="p">]</span> <span class="o">=</span> <span class="n">placements</span>
+</span><span id="Layout.__init__-37"><a href="#Layout.__init__-37"><span class="linenos">37</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_placement_map</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Placement</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">pl</span><span class="o">.</span><span class="n">pos</span><span class="p">:</span> <span class="n">pl</span> <span class="k">for</span> <span class="n">pl</span> <span class="ow">in</span> <span class="n">placements</span><span class="p">}</span>
+</span><span id="Layout.__init__-38"><a href="#Layout.__init__-38"><span class="linenos">38</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="Layout.__init__-39"><a href="#Layout.__init__-39"><span class="linenos">39</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="n">Vec</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="Layout.__init__-40"><a href="#Layout.__init__-40"><span class="linenos">40</span></a>
+</span><span id="Layout.__init__-41"><a href="#Layout.__init__-41"><span class="linenos">41</span></a>        <span class="k">for</span> <span class="n">pl</span> <span class="ow">in</span> <span class="n">placements</span><span class="p">:</span>
+</span><span id="Layout.__init__-42"><a href="#Layout.__init__-42"><span class="linenos">42</span></a>            <span class="n">cov</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_metadata</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">component_type</span><span class="p">,</span> <span class="o">**</span><span class="n">pl</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+</span><span id="Layout.__init__-43"><a href="#Layout.__init__-43"><span class="linenos">43</span></a>            <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">cov</span><span class="o">.</span><span class="n">cells</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">rotation</span><span class="p">):</span>
+</span><span id="Layout.__init__-44"><a href="#Layout.__init__-44"><span class="linenos">44</span></a>                <span class="n">cell</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">pos</span> <span class="o">+</span> <span class="n">offset</span>
+</span><span id="Layout.__init__-45"><a href="#Layout.__init__-45"><span class="linenos">45</span></a>                <span class="k">if</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">:</span>
+</span><span id="Layout.__init__-46"><a href="#Layout.__init__-46"><span class="linenos">46</span></a>                    <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">cell</span><span class="p">]</span>
+</span><span id="Layout.__init__-47"><a href="#Layout.__init__-47"><span class="linenos">47</span></a>                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="Layout.__init__-48"><a href="#Layout.__init__-48"><span class="linenos">48</span></a>                        <span class="sa">f</span><span class="s2">&quot;Overlap at </span><span class="si">{</span><span class="n">cell</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">existing</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">component_type</span><span class="p">,</span><span class="w"> </span><span class="n">pl</span><span class="o">.</span><span class="n">rotation</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="Layout.__init__-49"><a href="#Layout.__init__-49"><span class="linenos">49</span></a>                    <span class="p">)</span>
+</span><span id="Layout.__init__-50"><a href="#Layout.__init__-50"><span class="linenos">50</span></a>                <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="p">[</span><span class="n">cell</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">component_type</span><span class="p">,</span> <span class="n">pl</span><span class="o">.</span><span class="n">rotation</span><span class="p">)</span>
 </span><span id="Layout.__init__-51"><a href="#Layout.__init__-51"><span class="linenos">51</span></a>                <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
 </span></pre></div>
 
 
-            <div class="docstring"><p>Build occupancy grid from a component layout dict.</p>
+            <div class="docstring"><p>Build occupancy grid from an ordered list of placements.</p>
 
 <p>Iterates every component's coverage cells and checks for
 overlap before inserting into the grid.</p>
 
 <p>Args:
-    layout: Maps each component's origin to its
-        <code>(ComponentType, Rotation)</code>.
-    comp_configs: Optional per-origin config dicts forwarded to
-        <code>get_metadata</code>.</p>
+    placements: Ordered list of component placements.
+        The order is significant — it determines component IDs.</p>
 
 <p>Raises:
     ValueError: If two components occupy the same cell.</p>
@@ -372,15 +443,40 @@ overlap before inserting into the grid.</p>
 
 
                             </div>
-                            <div id="Layout.layout" class="classattr">
-                                <div class="attr variable">
-            <span class="name">layout</span>
+                            <div id="Layout.get_config" class="classattr">
+                                        <input id="Layout.get_config-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">get_config</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">coord</span><span class="p">:</span> <span class="n"><a href="utils/vec.html#Vec">simulation.utils.vec.Vec</a></span></span><span class="return-annotation">) -> <span class="nb">dict</span>:</span></span>
 
-        
+                <label class="view-source-button" for="Layout.get_config-view-source"><span>View Source</span></label>
+
     </div>
-    <a class="headerlink" href="#Layout.layout"></a>
-    
-    
+    <a class="headerlink" href="#Layout.get_config"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="Layout.get_config-53"><a href="#Layout.get_config-53"><span class="linenos">53</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="Layout.get_config-54"><a href="#Layout.get_config-54"><span class="linenos">54</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up the config dict for a component by its origin.</span>
+</span><span id="Layout.get_config-55"><a href="#Layout.get_config-55"><span class="linenos">55</span></a>
+</span><span id="Layout.get_config-56"><a href="#Layout.get_config-56"><span class="linenos">56</span></a><span class="sd">        Args:</span>
+</span><span id="Layout.get_config-57"><a href="#Layout.get_config-57"><span class="linenos">57</span></a><span class="sd">            coord: Grid origin of the component.</span>
+</span><span id="Layout.get_config-58"><a href="#Layout.get_config-58"><span class="linenos">58</span></a>
+</span><span id="Layout.get_config-59"><a href="#Layout.get_config-59"><span class="linenos">59</span></a><span class="sd">        Returns:</span>
+</span><span id="Layout.get_config-60"><a href="#Layout.get_config-60"><span class="linenos">60</span></a><span class="sd">            The config dict, or an empty dict if not found.</span>
+</span><span id="Layout.get_config-61"><a href="#Layout.get_config-61"><span class="linenos">61</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="Layout.get_config-62"><a href="#Layout.get_config-62"><span class="linenos">62</span></a>        <span class="n">pl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_placement_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span>
+</span><span id="Layout.get_config-63"><a href="#Layout.get_config-63"><span class="linenos">63</span></a>        <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">config</span> <span class="k">if</span> <span class="n">pl</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Look up the config dict for a component by its origin.</p>
+
+<p>Args:
+    coord: Grid origin of the component.</p>
+
+<p>Returns:
+    The config dict, or an empty dict if not found.</p>
+</div>
+
 
                             </div>
                             <div id="Layout.is_occupied" class="classattr">
@@ -394,16 +490,16 @@ overlap before inserting into the grid.</p>
 
     </div>
     <a class="headerlink" href="#Layout.is_occupied"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="Layout.is_occupied-53"><a href="#Layout.is_occupied-53"><span class="linenos">53</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">is_occupied</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</span><span id="Layout.is_occupied-54"><a href="#Layout.is_occupied-54"><span class="linenos">54</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Check whether a world cell is occupied.</span>
-</span><span id="Layout.is_occupied-55"><a href="#Layout.is_occupied-55"><span class="linenos">55</span></a>
-</span><span id="Layout.is_occupied-56"><a href="#Layout.is_occupied-56"><span class="linenos">56</span></a><span class="sd">        Args:</span>
-</span><span id="Layout.is_occupied-57"><a href="#Layout.is_occupied-57"><span class="linenos">57</span></a><span class="sd">            coord: World cell coordinate.</span>
-</span><span id="Layout.is_occupied-58"><a href="#Layout.is_occupied-58"><span class="linenos">58</span></a>
-</span><span id="Layout.is_occupied-59"><a href="#Layout.is_occupied-59"><span class="linenos">59</span></a><span class="sd">        Returns:</span>
-</span><span id="Layout.is_occupied-60"><a href="#Layout.is_occupied-60"><span class="linenos">60</span></a><span class="sd">            True if the cell is occupied.</span>
-</span><span id="Layout.is_occupied-61"><a href="#Layout.is_occupied-61"><span class="linenos">61</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="Layout.is_occupied-62"><a href="#Layout.is_occupied-62"><span class="linenos">62</span></a>        <span class="k">return</span> <span class="n">coord</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="Layout.is_occupied-65"><a href="#Layout.is_occupied-65"><span class="linenos">65</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">is_occupied</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="Layout.is_occupied-66"><a href="#Layout.is_occupied-66"><span class="linenos">66</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Check whether a world cell is occupied.</span>
+</span><span id="Layout.is_occupied-67"><a href="#Layout.is_occupied-67"><span class="linenos">67</span></a>
+</span><span id="Layout.is_occupied-68"><a href="#Layout.is_occupied-68"><span class="linenos">68</span></a><span class="sd">        Args:</span>
+</span><span id="Layout.is_occupied-69"><a href="#Layout.is_occupied-69"><span class="linenos">69</span></a><span class="sd">            coord: World cell coordinate.</span>
+</span><span id="Layout.is_occupied-70"><a href="#Layout.is_occupied-70"><span class="linenos">70</span></a>
+</span><span id="Layout.is_occupied-71"><a href="#Layout.is_occupied-71"><span class="linenos">71</span></a><span class="sd">        Returns:</span>
+</span><span id="Layout.is_occupied-72"><a href="#Layout.is_occupied-72"><span class="linenos">72</span></a><span class="sd">            True if the cell is occupied.</span>
+</span><span id="Layout.is_occupied-73"><a href="#Layout.is_occupied-73"><span class="linenos">73</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="Layout.is_occupied-74"><a href="#Layout.is_occupied-74"><span class="linenos">74</span></a>        <span class="k">return</span> <span class="n">coord</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span>
 </span></pre></div>
 
 
@@ -414,6 +510,60 @@ overlap before inserting into the grid.</p>
 
 <p>Returns:
     True if the cell is occupied.</p>
+</div>
+
+
+                            </div>
+                            <div id="Layout.can_place" class="classattr">
+                                        <input id="Layout.can_place-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">can_place</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span>, </span><span class="param"><span class="n">placement</span><span class="p">:</span> <span class="n"><a href="placement.html#Placement">simulation.placement.Placement</a></span></span><span class="return-annotation">) -> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>:</span></span>
+
+                <label class="view-source-button" for="Layout.can_place-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#Layout.can_place"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="Layout.can_place-76"><a href="#Layout.can_place-76"><span class="linenos">76</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">can_place</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">placement</span><span class="p">:</span> <span class="n">Placement</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+</span><span id="Layout.can_place-77"><a href="#Layout.can_place-77"><span class="linenos">77</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Check whether *placement* can be added without overlap.</span>
+</span><span id="Layout.can_place-78"><a href="#Layout.can_place-78"><span class="linenos">78</span></a>
+</span><span id="Layout.can_place-79"><a href="#Layout.can_place-79"><span class="linenos">79</span></a><span class="sd">        Read-only — does not modify the layout.  Also detects</span>
+</span><span id="Layout.can_place-80"><a href="#Layout.can_place-80"><span class="linenos">80</span></a><span class="sd">        self-intersection within the placement itself (e.g. a</span>
+</span><span id="Layout.can_place-81"><a href="#Layout.can_place-81"><span class="linenos">81</span></a><span class="sd">        conveyor crossing its own path).</span>
+</span><span id="Layout.can_place-82"><a href="#Layout.can_place-82"><span class="linenos">82</span></a>
+</span><span id="Layout.can_place-83"><a href="#Layout.can_place-83"><span class="linenos">83</span></a><span class="sd">        Args:</span>
+</span><span id="Layout.can_place-84"><a href="#Layout.can_place-84"><span class="linenos">84</span></a><span class="sd">            placement: The placement to check.</span>
+</span><span id="Layout.can_place-85"><a href="#Layout.can_place-85"><span class="linenos">85</span></a>
+</span><span id="Layout.can_place-86"><a href="#Layout.can_place-86"><span class="linenos">86</span></a><span class="sd">        Returns:</span>
+</span><span id="Layout.can_place-87"><a href="#Layout.can_place-87"><span class="linenos">87</span></a><span class="sd">            ``(True, &quot;&quot;)`` if the placement is valid,</span>
+</span><span id="Layout.can_place-88"><a href="#Layout.can_place-88"><span class="linenos">88</span></a><span class="sd">            ``(False, reason)`` if it would cause an overlap.</span>
+</span><span id="Layout.can_place-89"><a href="#Layout.can_place-89"><span class="linenos">89</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="Layout.can_place-90"><a href="#Layout.can_place-90"><span class="linenos">90</span></a>        <span class="n">cov</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_metadata</span><span class="p">(</span><span class="n">placement</span><span class="o">.</span><span class="n">component_type</span><span class="p">,</span> <span class="o">**</span><span class="n">placement</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+</span><span id="Layout.can_place-91"><a href="#Layout.can_place-91"><span class="linenos">91</span></a>        <span class="n">seen</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="n">Vec</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="Layout.can_place-92"><a href="#Layout.can_place-92"><span class="linenos">92</span></a>        <span class="k">for</span> <span class="n">offset</span> <span class="ow">in</span> <span class="n">cov</span><span class="o">.</span><span class="n">cells</span><span class="p">(</span><span class="n">placement</span><span class="o">.</span><span class="n">rotation</span><span class="p">):</span>
+</span><span id="Layout.can_place-93"><a href="#Layout.can_place-93"><span class="linenos">93</span></a>            <span class="n">cell</span> <span class="o">=</span> <span class="n">placement</span><span class="o">.</span><span class="n">pos</span> <span class="o">+</span> <span class="n">offset</span>
+</span><span id="Layout.can_place-94"><a href="#Layout.can_place-94"><span class="linenos">94</span></a>            <span class="k">if</span> <span class="n">cell</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_occupancy</span><span class="p">:</span>
+</span><span id="Layout.can_place-95"><a href="#Layout.can_place-95"><span class="linenos">95</span></a>                <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Overlap at (</span><span class="si">{</span><span class="n">cell</span><span class="o">.</span><span class="n">x</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">cell</span><span class="o">.</span><span class="n">y</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="Layout.can_place-96"><a href="#Layout.can_place-96"><span class="linenos">96</span></a>            <span class="k">if</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
+</span><span id="Layout.can_place-97"><a href="#Layout.can_place-97"><span class="linenos">97</span></a>                <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Path self-intersects at (</span><span class="si">{</span><span class="n">cell</span><span class="o">.</span><span class="n">x</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">cell</span><span class="o">.</span><span class="n">y</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="Layout.can_place-98"><a href="#Layout.can_place-98"><span class="linenos">98</span></a>            <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+</span><span id="Layout.can_place-99"><a href="#Layout.can_place-99"><span class="linenos">99</span></a>        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Check whether <em>placement</em> can be added without overlap.</p>
+
+<p>Read-only — does not modify the layout.  Also detects
+self-intersection within the placement itself (e.g. a
+conveyor crossing its own path).</p>
+
+<p>Args:
+    placement: The placement to check.</p>
+
+<p>Returns:
+    <code>(True, "")</code> if the placement is valid,
+    <code>(False, reason)</code> if it would cause an overlap.</p>
 </div>
 
 
@@ -429,16 +579,16 @@ overlap before inserting into the grid.</p>
 
     </div>
     <a class="headerlink" href="#Layout.get_component_at"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="Layout.get_component_at-64"><a href="#Layout.get_component_at-64"><span class="linenos">64</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_component_at</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]]:</span>
-</span><span id="Layout.get_component_at-65"><a href="#Layout.get_component_at-65"><span class="linenos">65</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up the component occupying a cell.</span>
-</span><span id="Layout.get_component_at-66"><a href="#Layout.get_component_at-66"><span class="linenos">66</span></a>
-</span><span id="Layout.get_component_at-67"><a href="#Layout.get_component_at-67"><span class="linenos">67</span></a><span class="sd">        Args:</span>
-</span><span id="Layout.get_component_at-68"><a href="#Layout.get_component_at-68"><span class="linenos">68</span></a><span class="sd">            coord: World cell coordinate.</span>
-</span><span id="Layout.get_component_at-69"><a href="#Layout.get_component_at-69"><span class="linenos">69</span></a>
-</span><span id="Layout.get_component_at-70"><a href="#Layout.get_component_at-70"><span class="linenos">70</span></a><span class="sd">        Returns:</span>
-</span><span id="Layout.get_component_at-71"><a href="#Layout.get_component_at-71"><span class="linenos">71</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*, or None.</span>
-</span><span id="Layout.get_component_at-72"><a href="#Layout.get_component_at-72"><span class="linenos">72</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="Layout.get_component_at-73"><a href="#Layout.get_component_at-73"><span class="linenos">73</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="Layout.get_component_at-101"><a href="#Layout.get_component_at-101"><span class="linenos">101</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_component_at</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]]:</span>
+</span><span id="Layout.get_component_at-102"><a href="#Layout.get_component_at-102"><span class="linenos">102</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up the component occupying a cell.</span>
+</span><span id="Layout.get_component_at-103"><a href="#Layout.get_component_at-103"><span class="linenos">103</span></a>
+</span><span id="Layout.get_component_at-104"><a href="#Layout.get_component_at-104"><span class="linenos">104</span></a><span class="sd">        Args:</span>
+</span><span id="Layout.get_component_at-105"><a href="#Layout.get_component_at-105"><span class="linenos">105</span></a><span class="sd">            coord: World cell coordinate.</span>
+</span><span id="Layout.get_component_at-106"><a href="#Layout.get_component_at-106"><span class="linenos">106</span></a>
+</span><span id="Layout.get_component_at-107"><a href="#Layout.get_component_at-107"><span class="linenos">107</span></a><span class="sd">        Returns:</span>
+</span><span id="Layout.get_component_at-108"><a href="#Layout.get_component_at-108"><span class="linenos">108</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*, or None.</span>
+</span><span id="Layout.get_component_at-109"><a href="#Layout.get_component_at-109"><span class="linenos">109</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="Layout.get_component_at-110"><a href="#Layout.get_component_at-110"><span class="linenos">110</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_grid</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span>
 </span></pre></div>
 
 
@@ -464,20 +614,20 @@ overlap before inserting into the grid.</p>
 
     </div>
     <a class="headerlink" href="#Layout.get"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="Layout.get-75"><a href="#Layout.get-75"><span class="linenos">75</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]</span> <span class="o">|</span> <span class="n">Any</span><span class="p">:</span>
-</span><span id="Layout.get-76"><a href="#Layout.get-76"><span class="linenos">76</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Dict-style get with default.</span>
-</span><span id="Layout.get-77"><a href="#Layout.get-77"><span class="linenos">77</span></a>
-</span><span id="Layout.get-78"><a href="#Layout.get-78"><span class="linenos">78</span></a><span class="sd">        Args:</span>
-</span><span id="Layout.get-79"><a href="#Layout.get-79"><span class="linenos">79</span></a><span class="sd">            coord: World cell coordinate.</span>
-</span><span id="Layout.get-80"><a href="#Layout.get-80"><span class="linenos">80</span></a><span class="sd">            default: Value returned if the cell is unoccupied.</span>
-</span><span id="Layout.get-81"><a href="#Layout.get-81"><span class="linenos">81</span></a>
-</span><span id="Layout.get-82"><a href="#Layout.get-82"><span class="linenos">82</span></a><span class="sd">        Returns:</span>
-</span><span id="Layout.get-83"><a href="#Layout.get-83"><span class="linenos">83</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*, or *default*.</span>
-</span><span id="Layout.get-84"><a href="#Layout.get-84"><span class="linenos">84</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="Layout.get-85"><a href="#Layout.get-85"><span class="linenos">85</span></a>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_component_at</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span>
-</span><span id="Layout.get-86"><a href="#Layout.get-86"><span class="linenos">86</span></a>        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="Layout.get-87"><a href="#Layout.get-87"><span class="linenos">87</span></a>            <span class="k">return</span> <span class="n">default</span>
-</span><span id="Layout.get-88"><a href="#Layout.get-88"><span class="linenos">88</span></a>        <span class="k">return</span> <span class="n">result</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="Layout.get-112"><a href="#Layout.get-112"><span class="linenos">112</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coord</span><span class="p">:</span> <span class="n">Vec</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]</span> <span class="o">|</span> <span class="n">Any</span><span class="p">:</span>
+</span><span id="Layout.get-113"><a href="#Layout.get-113"><span class="linenos">113</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Dict-style get with default.</span>
+</span><span id="Layout.get-114"><a href="#Layout.get-114"><span class="linenos">114</span></a>
+</span><span id="Layout.get-115"><a href="#Layout.get-115"><span class="linenos">115</span></a><span class="sd">        Args:</span>
+</span><span id="Layout.get-116"><a href="#Layout.get-116"><span class="linenos">116</span></a><span class="sd">            coord: World cell coordinate.</span>
+</span><span id="Layout.get-117"><a href="#Layout.get-117"><span class="linenos">117</span></a><span class="sd">            default: Value returned if the cell is unoccupied.</span>
+</span><span id="Layout.get-118"><a href="#Layout.get-118"><span class="linenos">118</span></a>
+</span><span id="Layout.get-119"><a href="#Layout.get-119"><span class="linenos">119</span></a><span class="sd">        Returns:</span>
+</span><span id="Layout.get-120"><a href="#Layout.get-120"><span class="linenos">120</span></a><span class="sd">            The ``(ComponentType, Rotation)`` at *coord*, or *default*.</span>
+</span><span id="Layout.get-121"><a href="#Layout.get-121"><span class="linenos">121</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="Layout.get-122"><a href="#Layout.get-122"><span class="linenos">122</span></a>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_component_at</span><span class="p">(</span><span class="n">coord</span><span class="p">)</span>
+</span><span id="Layout.get-123"><a href="#Layout.get-123"><span class="linenos">123</span></a>        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="Layout.get-124"><a href="#Layout.get-124"><span class="linenos">124</span></a>            <span class="k">return</span> <span class="n">default</span>
+</span><span id="Layout.get-125"><a href="#Layout.get-125"><span class="linenos">125</span></a>        <span class="k">return</span> <span class="n">result</span>
 </span></pre></div>
 
 
@@ -498,26 +648,26 @@ overlap before inserting into the grid.</p>
 <div class="attr function">
             
         <span class="def">def</span>
-        <span class="name">get_all_components</span><span class="signature pdoc-code multiline">(<span class="param">	<span class="bp">self</span></span><span class="return-annotation">) -> <span class="n">Iterable</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n"><a href="utils/vec.html#Vec">simulation.utils.vec.Vec</a></span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n"><a href="_enums.html#ComponentType">simulation._enums.ComponentType</a></span><span class="p">,</span> <span class="n"><a href="_enums.html#Rotation">simulation._enums.Rotation</a></span><span class="p">]]]</span>:</span></span>
+        <span class="name">get_all_components</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">) -> <span class="n">Iterator</span><span class="p">[</span><span class="n"><a href="placement.html#Placement">simulation.placement.Placement</a></span><span class="p">]</span>:</span></span>
 
                 <label class="view-source-button" for="Layout.get_all_components-view-source"><span>View Source</span></label>
 
     </div>
     <a class="headerlink" href="#Layout.get_all_components"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="Layout.get_all_components-104"><a href="#Layout.get_all_components-104"><span class="linenos">104</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_all_components</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Vec</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ComponentType</span><span class="p">,</span> <span class="n">Rotation</span><span class="p">]]]:</span>
-</span><span id="Layout.get_all_components-105"><a href="#Layout.get_all_components-105"><span class="linenos">105</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Yield all (origin, (type, rotation)) pairs in insertion order.</span>
-</span><span id="Layout.get_all_components-106"><a href="#Layout.get_all_components-106"><span class="linenos">106</span></a>
-</span><span id="Layout.get_all_components-107"><a href="#Layout.get_all_components-107"><span class="linenos">107</span></a><span class="sd">        Yields:</span>
-</span><span id="Layout.get_all_components-108"><a href="#Layout.get_all_components-108"><span class="linenos">108</span></a><span class="sd">            ``(Vec, (ComponentType, Rotation))`` for every component.</span>
-</span><span id="Layout.get_all_components-109"><a href="#Layout.get_all_components-109"><span class="linenos">109</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="Layout.get_all_components-110"><a href="#Layout.get_all_components-110"><span class="linenos">110</span></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="Layout.get_all_components-141"><a href="#Layout.get_all_components-141"><span class="linenos">141</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_all_components</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Placement</span><span class="p">]:</span>
+</span><span id="Layout.get_all_components-142"><a href="#Layout.get_all_components-142"><span class="linenos">142</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Yield all placements in insertion order.</span>
+</span><span id="Layout.get_all_components-143"><a href="#Layout.get_all_components-143"><span class="linenos">143</span></a>
+</span><span id="Layout.get_all_components-144"><a href="#Layout.get_all_components-144"><span class="linenos">144</span></a><span class="sd">        Yields:</span>
+</span><span id="Layout.get_all_components-145"><a href="#Layout.get_all_components-145"><span class="linenos">145</span></a><span class="sd">            ``Placement`` for every component.</span>
+</span><span id="Layout.get_all_components-146"><a href="#Layout.get_all_components-146"><span class="linenos">146</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="Layout.get_all_components-147"><a href="#Layout.get_all_components-147"><span class="linenos">147</span></a>        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_placements</span><span class="p">)</span>
 </span></pre></div>
 
 
-            <div class="docstring"><p>Yield all (origin, (type, rotation)) pairs in insertion order.</p>
+            <div class="docstring"><p>Yield all placements in insertion order.</p>
 
 <p>Yields:
-    <code>(Vec, (ComponentType, Rotation))</code> for every component.</p>
+    <code>Placement</code> for every component.</p>
 </div>
 
 

@@ -1,7 +1,7 @@
 [project]
-name = "simulation-v3"
+name = "simulation-v2"
 version = "0.1.0"
-description = "Add your description here"
+description = "Grid-based factory simulation with two-phase tick loop, bilateral port matching, and a web-based canvas viewer"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
