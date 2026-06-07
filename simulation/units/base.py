@@ -5,10 +5,12 @@ pull system for item transfer.
 """
 
 from abc import ABC, abstractmethod
-from typing import List
+from collections import defaultdict
+from typing import List, Optional
 
 from .._enums import LinkType, ComponentType
 from ..items.item import Item
+from ..utils import Vec
 
 
 class Base(ABC):
@@ -27,9 +29,13 @@ class Base(ABC):
     upstream_rr: int
 
     topo_index: int
+    grid_pos: Optional[Vec]
 
     _downstream_groups: List[tuple[int, int]]
     _downstream_rr: List[int]
+    _original_downstreams: List["Base"]
+    _distance_groups: List[List["Base"]]
+    _distance_rr: List[int]
 
     def __init__(self, comp_id: int) -> None:
         """Initialise a component base.
@@ -49,8 +55,12 @@ class Base(ABC):
         self.upstream_rr = 0
 
         self.topo_index = -1
+        self.grid_pos = None
         self._downstream_groups = []
         self._downstream_rr = []
+        self._original_downstreams = []
+        self._distance_groups = []
+        self._distance_rr = []
 
     def add_link(self, component: "Base", link_type: LinkType):
         """Register a link to another component.
@@ -73,12 +83,15 @@ class Base(ABC):
                 return
 
     def finalize(self) -> None:
-        """Sort downstreams by topo_index and build group table for RR.
+        """Sort downstreams by topo_index and build group tables for RR.
 
         Called once after the topological sort is complete.
         Groups are stored as (start, end) ranges into downstreams,
         with a parallel ``_downstream_rr`` list of per-group RR indices.
+
+        Also builds ``_distance_groups`` for priority output routing.
         """
+        self._original_downstreams = list(self.downstreams)
         self.downstreams.sort(key=lambda d: d.topo_index)
         self._downstream_groups.clear()
         self._downstream_rr.clear()
@@ -91,6 +104,19 @@ class Base(ABC):
             self._downstream_groups.append((i, j))
             self._downstream_rr.append(0)
             i = j
+        self._build_distance_groups()
+
+    def _build_distance_groups(self) -> None:
+        """Group original downstreams by topo_index (distance to sink), ascending.
+        Within each group, connection order is preserved.
+
+        Populates ``_distance_groups`` and ``_distance_rr``.
+        """
+        buckets: dict[int, list["Base"]] = defaultdict(list)
+        for d in self._original_downstreams:
+            buckets[d.topo_index].append(d)
+        self._distance_groups = [buckets[k] for k in sorted(buckets)]
+        self._distance_rr = [0] * len(self._distance_groups)
 
     def add_pull(self, requester: "Base") -> None:
         """Add a downstream component to the pull-request queue.
