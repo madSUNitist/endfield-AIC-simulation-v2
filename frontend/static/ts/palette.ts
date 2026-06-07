@@ -1,5 +1,13 @@
 import type { PaletteItem, Placement, Rotation, ComponentState, InventorySlot } from "./types.js";
 
+interface PaletteConfig {
+    container: HTMLElement;
+    onSelect: (type: string | null) => void;
+    onInventoryChange: (data: Record<string, number>) => void;
+    onCompItemChange: (compId: number, itemType: string) => void;
+    onCompInvChange: (slots: (InventorySlot)[]) => void;
+}
+
 // ── State ──────────────────────────────────────────────────────────
 
 let items: PaletteItem[] = [];
@@ -26,21 +34,14 @@ let container: HTMLElement;
 
 /**
  * Initialise the palette sidebar UI.
- * @param el - The container DOM element.
- * @param cb - Called when palette selection changes.
- * @param invCb - Called when inventory data changes.
- * @param compCb - Called when per-component item type changes.
+ * @param config - Configuration object with container element and callbacks.
  */
-export function init(el: HTMLElement,
-                     cb: (type: string | null) => void,
-                     invCb: (data: Record<string, number>) => void,
-                     compCb: (compId: number, itemType: string) => void,
-                     compInvCb: (slots: (InventorySlot)[]) => void): void {
-    container = el;
-    onSelect = cb;
-    onInventoryChange = invCb;
-    onCompItemChange = compCb;
-    onCompInvChange = compInvCb;
+export function init(config: PaletteConfig): void {
+    container = config.container;
+    onSelect = config.onSelect;
+    onInventoryChange = config.onInventoryChange;
+    onCompItemChange = config.onCompItemChange;
+    onCompInvChange = config.onCompInvChange;
 }
 
 /**
@@ -72,8 +73,22 @@ export function setSelectedCompState(state: { id: number; type: string; count?: 
     render();
 }
 
+// ── HTML builders ─────────────────────────────────────────────────
+
 /** Re-render the entire palette sidebar DOM. */
 function render(): void {
+    container.innerHTML = buildHtml();
+    bindEvents();
+}
+
+function buildHtml(): string {
+    return buildPaletteListHtml()
+         + buildConfigHtml()
+         + buildUnitPanelHtml()
+         + buildInventoryPanelHtml();
+}
+
+function buildPaletteListHtml(): string {
     let html = `<div class="palette-header">Components</div>`;
     html += `<div class="palette-list">`;
     const grouped = new Map<string, PaletteItem[]>();
@@ -89,7 +104,7 @@ function render(): void {
         for (const item of catItems) {
             const active = item.type === selectedType ? " active" : "";
             html += `<div class="palette-item${active}" data-type="${item.type}" style="border-left:4px solid ${item.color}">`;
-            html += `<span class="palette-label">${item.label}</span>`;
+            html += `<span class="palette-label">${escapeHtml(item.label)}</span>`;
             html += `<span class="palette-meta">${item.coverage[0]}×${item.coverage[1]}</span>`;
             html += `</div>`;
         }
@@ -99,68 +114,71 @@ function render(): void {
             for (const item of catItems) {
                 const active = item.type === selectedType ? " active" : "";
                 html += `<div class="palette-item${active}" data-type="${item.type}" style="border-left:4px solid ${item.color}">`;
-                html += `<span class="palette-label">${item.label}</span>`;
+                html += `<span class="palette-label">${escapeHtml(item.label)}</span>`;
                 html += `<span class="palette-meta">${item.coverage[0]}×${item.coverage[1]}</span>`;
                 html += `</div>`;
             }
         }
     }
     html += `</div>`;
+    return html;
+}
 
-    // Config fields
-    if (selectedType === "depot_loader") {
-        html += `<div class="palette-config">`;
-        html += `<label>Item: <input type="text" id="cfg-item-type" value="${selectedItemType}" size="6"></label>`;
+function buildConfigHtml(): string {
+    if (selectedType !== "depot_loader") return "";
+    return `<div class="palette-config">`
+         + `<label>Item: <input type="text" id="cfg-item-type" value="${escapeHtml(selectedItemType)}" size="6"></label>`
+         + `</div>`;
+}
+
+function buildUnitPanelHtml(): string {
+    if (!selectedCompState) return "";
+    const cs = selectedCompState;
+    const label = cs.type.replace(/_/g, " ");
+    let html = `<div class="palette-header" style="margin-top:8px">Unit: ${escapeHtml(label)}</div>`;
+    html += `<div class="comp-inv-panel">`;
+    if (cs.type === "depot_loader") {
+        html += `<div class="comp-inv-row">`;
+        html += `<label>Item: <input class="comp-item-type" value="${escapeHtml(cs.item_type ?? "ore")}" size="6"></label>`;
         html += `</div>`;
-    }
-
-    // Per-unit inventory panel (when an existing component with inventory is selected)
-    if (selectedCompState) {
-        const cs = selectedCompState;
-        const label = cs.type.replace(/_/g, " ");
-        html += `<div class="palette-header" style="margin-top:8px">Unit: ${label}</div>`;
-        html += `<div class="comp-inv-panel">`;
-        if (cs.type === "depot_loader") {
-            html += `<div class="comp-inv-row">`;
-            html += `<label>Item: <input class="comp-item-type" value="${escapeHtml(cs.item_type ?? "ore")}" size="6"></label>`;
-            html += `</div>`;
-            html += `<div class="comp-inv-row">`;
-            html += `<span class="comp-inv-label">Loaded:</span>`;
-            html += `<span class="comp-inv-val">${cs.count ?? 0}</span>`;
-            html += `</div>`;
-        } else if (cs.type === "depot_unloader") {
-            html += `<div class="comp-inv-row">`;
-            html += `<span class="comp-inv-label">Collected:</span>`;
-            html += `<span class="comp-inv-val">${cs.count ?? 0}</span>`;
-            html += `</div>`;
-        } else if (cs.type === "protocol_stash") {
-            if (cs.inventory_slots) {
-                for (let i = 0; i < cs.inventory_slots.length; i++) {
-                    const slot = cs.inventory_slots[i];
-                    html += `<div class="inv-row" data-stash-slot="${i}">`;
-                    html += `<span class="inv-slot-idx">[${i}]</span>`;
-                    html += `<input class="inv-name" value="${slot ? escapeHtml(slot.type) : ''}" placeholder="item">`;
-                    html += `<input class="inv-count" value="${slot ? slot.count : 0}" placeholder="0">`;
-                    html += `<button class="inv-del">×</button>`;
-                    html += `</div>`;
-                }
-            } else {
-                html += `<div class="comp-inv-row">`;
-                html += `<span class="comp-inv-label">Stored:</span>`;
-                html += `<span class="comp-inv-val">${cs.inventory ?? 0}</span>`;
+        html += `<div class="comp-inv-row">`;
+        html += `<span class="comp-inv-label">Loaded:</span>`;
+        html += `<span class="comp-inv-val">${cs.count ?? 0}</span>`;
+        html += `</div>`;
+    } else if (cs.type === "depot_unloader") {
+        html += `<div class="comp-inv-row">`;
+        html += `<span class="comp-inv-label">Collected:</span>`;
+        html += `<span class="comp-inv-val">${cs.count ?? 0}</span>`;
+        html += `</div>`;
+    } else if (cs.type === "protocol_stash") {
+        if (cs.inventory_slots) {
+            for (let i = 0; i < cs.inventory_slots.length; i++) {
+                const slot = cs.inventory_slots[i];
+                html += `<div class="inv-row" data-stash-slot="${i}">`;
+                html += `<span class="inv-slot-idx">[${i}]</span>`;
+                html += `<input class="inv-name" value="${slot ? escapeHtml(slot.type) : ''}" placeholder="item">`;
+                html += `<input class="inv-count" value="${slot ? slot.count : 0}" placeholder="0">`;
+                html += `<button class="inv-del">×</button>`;
                 html += `</div>`;
             }
-        } else if (cs.count !== undefined || cs.inventory !== undefined) {
+        } else {
             html += `<div class="comp-inv-row">`;
-            html += `<span class="comp-inv-label">Count:</span>`;
-            html += `<span class="comp-inv-val">${cs.count ?? cs.inventory ?? 0}</span>`;
+            html += `<span class="comp-inv-label">Stored:</span>`;
+            html += `<span class="comp-inv-val">${cs.inventory ?? 0}</span>`;
             html += `</div>`;
         }
+    } else if (cs.count !== undefined || cs.inventory !== undefined) {
+        html += `<div class="comp-inv-row">`;
+        html += `<span class="comp-inv-label">Count:</span>`;
+        html += `<span class="comp-inv-val">${cs.count ?? cs.inventory ?? 0}</span>`;
         html += `</div>`;
     }
+    html += `</div>`;
+    return html;
+}
 
-    // Inventory panel (ordered slots — only non-empty shown)
-    html += `<div class="palette-header" style="margin-top:8px">Inventory</div>`;
+function buildInventoryPanelHtml(): string {
+    let html = `<div class="palette-header" style="margin-top:8px">Inventory</div>`;
     html += `<div class="inventory-panel">`;
     let visibleCount = 0;
     for (let i = 0; i < inventoryData.length; i++) {
@@ -179,10 +197,20 @@ function render(): void {
     }
     html += `<button class="inv-add">+ Fill Slot</button>`;
     html += `</div>`;
+    return html;
+}
 
-    container.innerHTML = html;
+// ── Event binders ─────────────────────────────────────────────────
 
-    // Bind palette clicks
+function bindEvents(): void {
+    bindPaletteClicks();
+    bindConfigInputs();
+    bindUnitPanelEvents();
+    bindInventoryEvents();
+    bindFillButton();
+}
+
+function bindPaletteClicks(): void {
     for (const el of container.querySelectorAll(".palette-item")) {
         el.addEventListener("click", () => {
             const t = (el as HTMLElement).dataset.type!;
@@ -195,14 +223,17 @@ function render(): void {
             render();
         });
     }
+}
 
-    // Bind config inputs
+function bindConfigInputs(): void {
     const itemInput = document.getElementById("cfg-item-type") as HTMLInputElement;
     if (itemInput) {
         itemInput.addEventListener("change", () => { selectedItemType = itemInput.value; });
     }
+}
 
-    // Bind per-unit item type input
+function bindUnitPanelEvents(): void {
+    // Per-unit item type input (depot_loader)
     const compItemInput = container.querySelector(".comp-item-type") as HTMLInputElement;
     if (compItemInput && selectedCompState) {
         const compId = selectedCompState.id;
@@ -211,12 +242,7 @@ function render(): void {
         });
     }
 
-    // Bind stash slot inputs (protocol_stash editable inventory)
-    const emitStashSlots = () => {
-        if (onCompInvChange && selectedCompState?.inventory_slots) {
-            onCompInvChange(selectedCompState.inventory_slots);
-        }
-    };
+    // Stash slot inputs (protocol_stash editable inventory)
     for (const row of container.querySelectorAll("[data-stash-slot]")) {
         const slotIdx = parseInt((row as HTMLElement).dataset.stashSlot ?? "-1");
         if (slotIdx < 0 || !selectedCompState?.inventory_slots) continue;
@@ -265,8 +291,9 @@ function render(): void {
             });
         }
     }
+}
 
-    // Bind inventory slot inputs
+function bindInventoryEvents(): void {
     for (const row of container.querySelectorAll(".inv-row")) {
         const slotIdx = parseInt((row as HTMLElement).dataset.slotIndex ?? "-1");
         if (slotIdx < 0) continue;
@@ -311,27 +338,34 @@ function render(): void {
             });
         }
     }
+}
 
-    // Bind "Fill Slot" button — populate first empty slot
+function bindFillButton(): void {
     const fillBtn = container.querySelector(".inv-add") as HTMLButtonElement;
-    if (fillBtn) {
-        fillBtn.addEventListener("click", () => {
-            const idx = inventoryData.findIndex(s => s === null);
-            if (idx >= 0) {
-                inventoryData[idx] = { type: "item", count: 0 };
-                emitInventory();
-                render();
-                setTimeout(() => {
-                    const rows = container.querySelectorAll(".inv-row");
-                    for (const row of rows) {
-                        if (parseInt((row as HTMLElement).dataset.slotIndex ?? "-1") === idx) {
-                            (row.querySelector(".inv-name") as HTMLInputElement)?.focus();
-                            break;
-                        }
+    if (!fillBtn) return;
+    fillBtn.addEventListener("click", () => {
+        const idx = inventoryData.findIndex(s => s === null);
+        if (idx >= 0) {
+            inventoryData[idx] = { type: "item", count: 0 };
+            emitInventory();
+            render();
+            setTimeout(() => {
+                const rows = container.querySelectorAll(".inv-row");
+                for (const row of rows) {
+                    if (parseInt((row as HTMLElement).dataset.slotIndex ?? "-1") === idx) {
+                        (row.querySelector(".inv-name") as HTMLInputElement)?.focus();
+                        break;
                     }
-                }, 0);
-            }
-        });
+                }
+            }, 0);
+        }
+    });
+}
+
+/** Emit per-unit stash slot changes via callback. */
+function emitStashSlots(): void {
+    if (onCompInvChange && selectedCompState?.inventory_slots) {
+        onCompInvChange(selectedCompState.inventory_slots);
     }
 }
 

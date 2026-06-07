@@ -1,32 +1,20 @@
 """Belt-bridge unit — transports items across gaps or between layers.
 
-Not yet implemented; all methods are stubs.
+Not yet implemented.
 """
 
 from ...base import Base
+from ....items.item import Item
 
 
 class BeltBridge(Base):
-    """Placeholder belt bridge (elevated crossing / inter-layer belt).
-
-    Currently all methods are stubs that do nothing or reject items.
-    """
+    """Placeholder belt bridge (elevated crossing / inter-layer belt)."""
 
     def fulfill_requests(self) -> None:
-        """Stub — no-op. Placeholder for future downstream pull distribution."""
-        ...
+        raise NotImplementedError("BeltBridge.fulfill_requests")
 
     def request_upstream(self) -> None:
-        """Stub — no-op. Placeholder for future upstream pull requests."""
-        ...
+        raise NotImplementedError("BeltBridge.request_upstream")
 
-    def _accept_item(self, item) -> bool:
-        """Stub — always rejects items.
-
-        Args:
-            item: The item to accept.
-
-        Returns:
-            False (item is always rejected).
-        """
-        return False
+    def _accept_item(self, item: Item) -> bool:
+        raise NotImplementedError("BeltBridge._accept_item")

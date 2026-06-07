@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -22,6 +23,20 @@ logger = logging.getLogger("server")
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 app = FastAPI()
+
+
+@app.middleware("http")
+async def _global_exception_handler(request: Request, call_next):
+    """Catch unhandled exceptions and return a generic error response."""
+    try:
+        return await call_next(request)
+    except Exception:
+        logger.exception("Unhandled exception in %s %s", request.method, request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content={"ok": False, "error": "Internal server error"},
+        )
+
 
 # ── Pydantic models ────────────────────────────────────────────────
 
@@ -135,15 +150,13 @@ def _entry_kwargs(entry: dict) -> dict:
     return {k: entry[k] for k in ("path", "direction_in", "direction_out") if k in entry}
 
 
-def build_layout() -> dict:
-    """Build the layout response dict for the frontend.
-
-    Iterates all components in the graph and produces the
-    ``components``, ``edges``, and ``viewport`` payload.
+def _build_components() -> tuple[list[dict], dict[int, list[int]]]:
+    """Walk the component graph and build layout descriptors.
 
     Returns:
-        A dict with keys ``components`` (list of component descriptors),
-        ``edges`` (list of ``{from, to}``), and ``viewport``.
+        Tuple of ``(comps, comp_map)`` where ``comps`` is a list of
+        component descriptor dicts and ``comp_map`` maps component id
+        to grid origin ``[x, y]``.
     """
     global _factory
     assert _factory is not None
@@ -207,50 +220,151 @@ def build_layout() -> dict:
         })
         comp_map[comp.id] = [coord.x, coord.y]
 
+    return comps, comp_map
+
+
+def _build_edges(comps: list[dict], comp_map: dict[int, list[int]]) -> list[dict]:
+    """Build the edge list from downstreams in the component graph.
+
+    Args:
+        comps: Component descriptor list (from ``_build_components``).
+        comp_map: Component id → grid origin ``[x, y]``.
+
+    Returns:
+        List of ``{from, to}`` edge dicts connecting closest cell pairs.
+    """
+    global _factory
+    assert _factory is not None
+
     edges = []
     for comp in _factory.graph.components:
         for down in comp.downstreams:
             to_pos = comp_map.get(down.id)
-            if to_pos:
-                from_cells = []
-                for c in comps:
-                    if c["id"] == comp.id:
-                        from_cells = c["cells"]
-                        break
-                to_cells = []
-                for c in comps:
-                    if c["id"] == down.id:
-                        to_cells = c["cells"]
-                        break
+            if not to_pos:
+                continue
 
-                # Find closest cell pair between components
-                best = None
-                best_dist = 1e9
-                for fc in from_cells:
-                    for tc in to_cells:
-                        d = (fc[0]-tc[0])**2 + (fc[1]-tc[1])**2
-                        if d < best_dist:
-                            best_dist = d
-                            best = (fc, tc)
-                if best:
-                    edges.append({"from": best[0], "to": best[1]})
+            from_cells = _find_cells_by_id(comps, comp.id)
+            to_cells = _find_cells_by_id(comps, down.id)
 
-    # Viewport
-    all_cells = []
+            best = None
+            best_dist = 1e9
+            for fc in from_cells:
+                for tc in to_cells:
+                    d = (fc[0] - tc[0]) ** 2 + (fc[1] - tc[1]) ** 2
+                    if d < best_dist:
+                        best_dist = d
+                        best = (fc, tc)
+            if best:
+                edges.append({"from": best[0], "to": best[1]})
+
+    return edges
+
+
+def _find_cells_by_id(comps: list[dict], comp_id: int) -> list[list[int]]:
+    """Find the cell list for a component by its id.
+
+    Args:
+        comps: Component descriptor list.
+        comp_id: The component id to look up.
+
+    Returns:
+        List of ``[x, y]`` cells, or empty list if not found.
+    """
+    for c in comps:
+        if c["id"] == comp_id:
+            return c["cells"]
+    return []
+
+
+def _compute_viewport(comps: list[dict]) -> dict:
+    """Compute a bounding viewport from all component cells.
+
+    Args:
+        comps: Component descriptor list.
+
+    Returns:
+        Viewport dict with keys ``x0, y0, w, h``.
+    """
+    all_cells: list[list[int]] = []
     for c in comps:
         all_cells.extend(c["cells"])
     if not all_cells:
-        viewport = {"x0": -3, "y0": -3, "w": 6, "h": 6}
-    else:
-        xs = [c[0] for c in all_cells]
-        ys = [c[1] for c in all_cells]
-        x0 = min(xs) - 2
-        y0 = min(ys) - 2
-        x1 = max(xs) + 2
-        y1 = max(ys) + 2
-        viewport = {"x0": x0, "y0": y0, "w": x1 - x0 + 1, "h": y1 - y0 + 1}
+        return {"x0": -3, "y0": -3, "w": 6, "h": 6}
 
+    xs = [c[0] for c in all_cells]
+    ys = [c[1] for c in all_cells]
+    x0 = min(xs) - 2
+    y0 = min(ys) - 2
+    x1 = max(xs) + 2
+    y1 = max(ys) + 2
+    return {"x0": x0, "y0": y0, "w": x1 - x0 + 1, "h": y1 - y0 + 1}
+
+
+def build_layout() -> dict:
+    """Build the layout response dict for the frontend.
+
+    Iterates all components in the graph and produces the
+    ``components``, ``edges``, and ``viewport`` payload.
+
+    Returns:
+        A dict with keys ``components`` (list of component descriptors),
+        ``edges`` (list of ``{from, to}``), and ``viewport``.
+    """
+    comps, comp_map = _build_components()
+    edges = _build_edges(comps, comp_map)
+    viewport = _compute_viewport(comps)
     return {"components": comps, "edges": edges, "viewport": viewport}
+
+
+# ── Component state builders (per-type handlers) ──────────────────
+
+def _build_conveyor_state(comp: Any, coord: Vec) -> dict:
+    """Build state dict for a Conveyor component (slot map)."""
+    global _factory
+    assert _factory is not None
+    ct, rot = _factory.layout[coord]
+    entry = _find_entry(coord)
+    kwargs = _entry_kwargs(entry)
+    cov, _ = get_metadata(ct, **kwargs)
+    cell_offsets = cov.cells(rot)
+    slot_map = {}
+    n = len(cell_offsets)
+    for i, s in enumerate(comp._slots):
+        if i < n:
+            cell = coord + cell_offsets[n - 1 - i]
+            k = f"{cell.x},{cell.y}"
+            slot_map[k] = {"type": str(s.type), "id": s.id} if s is not None else None
+    return {"type": "conveyor", "slot_map": slot_map}
+
+
+def _build_buffer_state(comp: Any, type_name: str) -> dict:
+    """Build state dict for a single-buffer component (Splitter/Converger/Stash)."""
+    b = comp._buffer
+    state: dict = {"type": type_name}
+    state["buffer"] = {"type": str(b.type), "id": b.id} if b is not None else None
+    return state
+
+
+def _build_stash_inventory_state(comp: Any) -> dict:
+    """Extract protocol_stash private inventory snapshot."""
+    return {"inventory_slots": comp._inv.snapshot()}
+
+
+def _build_loader_state(comp: Any) -> dict:
+    """Build state dict for a DepotLoader."""
+    return {
+        "type": "depot_loader",
+        "count": comp._inv.count(comp.item_type),
+        "item_type": str(comp.item_type),
+    }
+
+
+def _build_unloader_state(comp: Any) -> dict:
+    """Build state dict for a DepotUnloader."""
+    return {
+        "type": "depot_unloader",
+        "count": comp._inv.count(),
+    }
 
 
 def build_component_state(comp: Any, coord: Vec) -> dict:
@@ -269,46 +383,26 @@ def build_component_state(comp: Any, coord: Vec) -> dict:
     """
     global _factory
     assert _factory is not None
-    from simulation.units.logistics_units.belt.conveyor import Conveyor
-    from simulation.units.logistics_units.belt.converger import Converger
-    from simulation.units.logistics_units.belt.splitter import Splitter
-    from simulation.units.depot_access.protocol_stash import ProtocolStash
-    from simulation.units.depot_access.depot_loader import DepotLoader
-    from simulation.units.depot_access.depot_unloader import DepotUnloader
+    from simulation._enums import ComponentType as CT
 
     state: dict = {"id": comp.id, "can_pull": comp.can_pull()}
+    ct = getattr(comp, "component_type", None)
+    if ct is None:
+        return state
 
-    if isinstance(comp, Conveyor):
-        state["type"] = "conveyor"
-        ct, rot = _factory.layout[coord]
-        entry = _find_entry(coord)
-        kwargs = _entry_kwargs(entry)
-        cov, _ = get_metadata(ct, **kwargs)
-        cell_offsets = cov.cells(rot)
-        slot_map = {}
-        n = len(cell_offsets)
-        for i, s in enumerate(comp._slots):
-            if i < n:
-                cell = coord + cell_offsets[n - 1 - i]
-                k = f"{cell.x},{cell.y}"
-                slot_map[k] = {"type": str(s.type), "id": s.id} if s is not None else None
-        state["slot_map"] = slot_map
-    elif isinstance(comp, (Converger, Splitter)):
-        state["type"] = "splitter" if isinstance(comp, Splitter) else "converger"
-        b = comp._buffer
-        state["buffer"] = {"type": str(b.type), "id": b.id} if b is not None else None
-    elif isinstance(comp, ProtocolStash):
-        state["type"] = "protocol_stash"
-        b = comp._buffer
-        state["buffer"] = {"type": str(b.type), "id": b.id} if b is not None else None
-        state["inventory_slots"] = comp._inv.snapshot()
-    elif isinstance(comp, DepotLoader):
-        state["type"] = "depot_loader"
-        state["count"] = comp._inv.count(comp.item_type)
-        state["item_type"] = str(comp.item_type)
-    elif isinstance(comp, DepotUnloader):
-        state["type"] = "depot_unloader"
-        state["count"] = comp._inv.count()
+    if ct == CT.LOGISTICS_BELT_CONVEYOR:
+        state.update(_build_conveyor_state(comp, coord))
+    elif ct == CT.LOGISTICS_BELT_SPLITTER:
+        state.update(_build_buffer_state(comp, "splitter"))
+    elif ct == CT.LOGISTICS_BELT_CONVERGER:
+        state.update(_build_buffer_state(comp, "converger"))
+    elif ct == CT.DEPOT_ACCESS_PROTOCOL_STASH:
+        state.update(_build_buffer_state(comp, "protocol_stash"))
+        state.update(_build_stash_inventory_state(comp))
+    elif ct == CT.DEPOT_ACCESS_DEPOT_LOADER:
+        state.update(_build_loader_state(comp))
+    elif ct == CT.DEPOT_ACCESS_DEPOT_UNLOADER:
+        state.update(_build_unloader_state(comp))
 
     return state
 
@@ -383,24 +477,37 @@ def blank_map():
 
 @app.get("/api/save")
 def save_blueprint():
-    """Return the current layout as a bare blueprint array
-    (matches the test_case component-entry format)."""
+    """Return the current layout as a blueprint dict with components
+    and inventory (backward compatible: old clients receive the new
+    format; new clients parse both keys)."""
     global _config
     if _config is None:
-        return []
-    return _config.get("components", [])
+        return {"components": [], "inventory": {}}
+    return {
+        "components": _config.get("components", []),
+        "inventory": _config.get("inventory", {}),
+    }
 
 
 @app.post("/api/load-blueprint")
 async def load_blueprint(request: Request):
-    """Accept a blueprint array (bare component entries) and load it."""
+    """Accept a blueprint (bare component array or dict with
+    ``components`` + ``inventory`` keys) and load it."""
     global _factory, _current_tick, _config
     data = await request.json()
-    comps = data if isinstance(data, list) else []
+    if isinstance(data, list):
+        comps = data
+        inventory: dict = {}
+    elif isinstance(data, dict):
+        comps = data.get("components", [])
+        inventory = data.get("inventory", {})
+    else:
+        comps = []
+        inventory = {}
     _config = {
         "name": "Blueprint",
         "ticks": 99999,
-        "inventory": {},
+        "inventory": inventory,
         "components": comps,
     }
     try:
@@ -408,6 +515,7 @@ async def load_blueprint(request: Request):
         _current_tick = 0
         return build_full_response()
     except Exception as e:
+        logger.exception("blueprint load failed")
         return {"ok": False, "error": str(e)}
 
 
@@ -456,51 +564,84 @@ def component_types():
 def load_case(req: dict):
     """Load a test case by name and return full layout + initialState."""
     global _factory, _current_tick, _config
-    case_name = req.get("case", "")
+    case_name = str(req.get("case", ""))
+    if ".." in case_name or "/" in case_name or "\\" in case_name:
+        return {"ok": False, "error": f"Invalid case name: {case_name}"}
     cases_dir = Path(__file__).parent.parent / "tests" / "test_cases"
     path = cases_dir / f"{case_name}.json"
     if not path.exists():
         return {"ok": False, "error": f"Case '{case_name}' not found"}
-    _config = json.loads(path.read_text())
+    try:
+        _config = json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError) as e:
+        logger.exception("Failed to load case %s", case_name)
+        return {"ok": False, "error": f"Failed to read case: {e}"}
     assert _config is not None
     _factory = Factory(_config)
     _current_tick = 0
     return build_full_response()
 
 
+def _build_config_entry(c: CompPlacement) -> dict:
+    """Convert a CompPlacement Pydantic model into a raw config entry dict.
+
+    Args:
+        c: The validated placement request.
+
+    Returns:
+        A config dict suitable for Factory construction.
+    """
+    entry: dict = {"type": c.type}
+
+    if c.path is not None:
+        entry["path"] = c.path
+        entry["direction_in"] = c.direction_in
+        entry["direction_out"] = c.direction_out
+    else:
+        entry["pos"] = c.pos
+        entry["rot"] = c.rot
+
+    if c.type == "depot_loader":
+        entry["item"] = c.item or "ore"
+
+    if not c.inventory:
+        return entry
+
+    if c.type == "protocol_stash":
+        stash_slots = _build_stash_slots(c.inventory)
+        entry["stash_slots"] = stash_slots
+    else:
+        entry["inventory"] = c.inventory
+
+    return entry
+
+
+def _build_stash_slots(inventory: dict[str, int]) -> list[dict]:
+    """Convert a type→count inventory dict into per-slot entries (max 50 per slot).
+
+    Args:
+        inventory: Mapping of item type to total count.
+
+    Returns:
+        List of ``{type, count}`` slot dicts.
+    """
+    slots: list[dict] = []
+    slot_idx = 0
+    for item_type, count in inventory.items():
+        remaining = count
+        while remaining > 0 and slot_idx < 6:
+            per_slot = min(remaining, 50)
+            slots.append({"type": item_type, "count": per_slot})
+            remaining -= per_slot
+            slot_idx += 1
+    return slots
+
+
 @app.post("/api/layout")
 def set_layout(req: LayoutRequest):
     """Submit a custom layout and reset the simulation to tick 0."""
     global _factory, _current_tick, _config
-    comps = []
-    for c in req.components:
-        entry: dict = {
-            "type": c.type,
-        }
-        if c.path is not None:
-            entry["path"] = c.path
-            entry["direction_in"] = c.direction_in
-            entry["direction_out"] = c.direction_out
-        else:
-            entry["pos"] = c.pos
-            entry["rot"] = c.rot
-        if c.type == "depot_loader":
-            entry["item"] = c.item or "ore"
-        if c.inventory:
-            if c.type == "protocol_stash":
-                stash_slots = []
-                slot_idx = 0
-                for item_type, count in c.inventory.items():
-                    remaining = count
-                    while remaining > 0 and slot_idx < 6:
-                        per_slot = min(remaining, 50)
-                        stash_slots.append({"type": item_type, "count": per_slot})
-                        remaining -= per_slot
-                        slot_idx += 1
-                entry["stash_slots"] = stash_slots
-            else:
-                entry["inventory"] = c.inventory
-        comps.append(entry)
+    comps = [_build_config_entry(c) for c in req.components]
 
     _config = {
         "name": "Custom Layout",
@@ -514,7 +655,7 @@ def set_layout(req: LayoutRequest):
         logger.info("layout built: %d components", len(comps))
         return build_full_response()
     except Exception as e:
-        logger.warning("layout rejected: %s", e)
+        logger.exception("layout rejected: %s", e)
         return {"ok": False, "error": str(e)}
 
 
@@ -579,4 +720,4 @@ if static_dir.exists():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
+    uvicorn.run(app, host="127.0.0.1", port=3000, log_level="info")

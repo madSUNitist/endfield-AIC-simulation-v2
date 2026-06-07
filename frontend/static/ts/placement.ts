@@ -179,6 +179,51 @@ let mode: PlacementMode = { mode: "idle" };
 let placements: Placement[] = [];
 let lastHoverCell: [number, number] | null = null;
 let onCommit: ((p: Placement[]) => Promise<void> | void) | null = null;
+let _commitBusy = false;
+let _pendingSnapshot: Placement[] | null = null;
+
+/** Compute all occupied world cells from the current placement list. */
+function _occupiedCells(): Set<string> {
+    const cells = new Set<string>();
+    for (const p of placements) {
+        if (p.type === "conveyor") {
+            if (p.path) {
+                const expanded = expandWaypoints(p.path);
+                const ox = p.path[0][0], oy = p.path[0][1];
+                for (const c of expanded) {
+                    cells.add(`${ox + c[0]},${oy + c[1]}`);
+                }
+            }
+        } else if (p.pos) {
+            for (const c of getGhostCells(p.type, p.pos, p.rot ?? "ROT_0")) {
+                cells.add(`${c[0]},${c[1]}`);
+            }
+        }
+    }
+    return cells;
+}
+
+/**
+ * Serialise commit calls: if a commit is already in-flight,
+ * queue the next one.  Only the latest pending commit is kept.
+ */
+async function _flushCommit(snapshot: Placement[]): Promise<void> {
+    if (_commitBusy) {
+        _pendingSnapshot = snapshot;
+        return;
+    }
+    _commitBusy = true;
+    try {
+        while (true) {
+            if (onCommit) await onCommit(snapshot);
+            if (_pendingSnapshot === null) break;
+            snapshot = _pendingSnapshot;
+            _pendingSnapshot = null;
+        }
+    } finally {
+        _commitBusy = false;
+    }
+}
 
 /**
  * Initialise the placement state machine.
@@ -473,13 +518,23 @@ export async function onClick(cell: [number, number], btn: number): Promise<void
     }
 
     if (mode.mode === "simple") {
+        // ── Client-side overlap check ─────────────────────────────
+        const ghostCells = getGhostCells(mode.type, cell, mode.rot);
+        const occupied = _occupiedCells();
+        for (const gc of ghostCells) {
+            if (occupied.has(`${gc[0]},${gc[1]}`)) {
+                console.warn(`overlap prevented: ${mode.type} at [${cell[0]},${cell[1]}] overlaps existing component at [${gc[0]},${gc[1]}]`);
+                return;
+            }
+        }
+        // ── End overlap check ────────────────────────────────────
         const p: Placement = { type: mode.type, pos: cell, rot: mode.rot };
         if (mode.type === "depot_loader") {
             p.item = getSelectedItemType();
         }
         placements.push(p);
         Renderer.setGhost(null);
-        if (onCommit) await onCommit(placements);
+        _flushCommit([...placements]);
         return;
     }
 
@@ -604,5 +659,5 @@ async function commitConveyor(): Promise<void> {
         hoverCell: null,
     };
     Renderer.setGhost(null);
-    if (onCommit) await onCommit(placements);
+    _flushCommit([...placements]);
 }

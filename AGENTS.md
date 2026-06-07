@@ -14,7 +14,7 @@
 | `uv run python tools/visualize.py` | Text + graphviz SVG of all test graphs |
 | `uv run python tools/visualize.py --no-graphviz` | Text-only graph dump |
 | `pwsh server.ps1` | Compile TS + start dev server |
-| `uv run python frontend/server.py` | Start FastAPI dev server at `http://127.0.0.1:8000` |
+| `uv run python frontend/server.py` | Start FastAPI dev server at `http://127.0.0.1:3000` |
 | `cd frontend && npm run build` | Compile TypeScript → JS for frontend |
 | `uv run pdoc simulation -o docs` | Regenerate API docs |
 
@@ -64,7 +64,7 @@ always served before non-Converger downstreams regardless of topo_index (distanc
 
 - **Conveyors use path-based placement**: JSON requires `path` (waypoints list), `direction_in`, `direction_out` instead of `pos`/`rot`
 - **`mappings.py` loads JSON relative to CWD**: works from repo root (`uv run`); fails if CWD differs
-- **Only belt component implementations exist** — `Conveyor`, `Splitter`, `Converger`, `ProtocolStash`. All pipe, power, and production unit files are empty stubs. Conduit files do not exist.
+- **Only belt component implementations exist** — `Conveyor`, `Splitter`, `Converger`, `ProtocolStash`. `BeltBridge` and `ItemControlPort` are stubs that raise `NotImplementedError`. All pipe, power, production, conduit, and fluid tank units are stubs that raise `NotImplementedError`.
 - **`docs/` is pdoc-generated**: rebuild with `pdoc simulation -o docs` after API changes
 - **Assets directory is `assets/`** (not `assests/`)
 

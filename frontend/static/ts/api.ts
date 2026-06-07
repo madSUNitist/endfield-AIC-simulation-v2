@@ -76,6 +76,14 @@ export async function fetchBlank(): Promise<LayoutResponse> {
  */
 export async function sendLayout(placements: Placement[], inventory: Record<string, number> = {}): Promise<LayoutResponse> {
     try {
+        // Diagnostic: log placement positions for non-conveyor components
+        for (const p of placements) {
+            if (p.type !== "conveyor" && p.pos) {
+                console.log(`sendLayout: ${p.type} at [${p.pos[0]},${p.pos[1]}] rot=${p.rot ?? "ROT_0"}`);
+            } else if (p.type === "conveyor" && p.path) {
+                console.log(`sendLayout: conveyor path=${JSON.stringify(p.path)}`);
+            }
+        }
         const r = await fetch(`${BASE}/api/layout`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -111,10 +119,10 @@ export async function validatePath(path: [number, number][],
 }
 
 /**
- * Save the current layout as a blueprint array.
- * @returns Bare blueprint component-entry array.
+ * Save the current layout as a blueprint dict with components and inventory.
+ * @returns Blueprint dict with ``components`` and ``inventory`` keys.
  */
-export async function saveBlueprint(): Promise<object[]> {
+export async function saveBlueprint(): Promise<{ components: object[]; inventory: Record<string, number> }> {
     try {
         const r = await fetch(`${BASE}/api/save`);
         return r.json();
@@ -125,11 +133,11 @@ export async function saveBlueprint(): Promise<object[]> {
 }
 
 /**
- * Load a blueprint array and build a simulation from it.
- * @param data - Blueprint array of component entries.
+ * Load a blueprint (bare component array or dict) and build a simulation from it.
+ * @param data - Blueprint array or dict with ``components`` + ``inventory`` keys.
  * @returns LayoutResponse for the loaded blueprint.
  */
-export async function loadBlueprint(data: object[]): Promise<LayoutResponse> {
+export async function loadBlueprint(data: object[] | object): Promise<LayoutResponse> {
     try {
         const r = await fetch(`${BASE}/api/load-blueprint`, {
             method: "POST",

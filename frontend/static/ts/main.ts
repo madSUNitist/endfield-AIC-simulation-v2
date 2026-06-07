@@ -39,9 +39,9 @@ async function init(): Promise<void> {
     Renderer.init(canvas, tooltipEl);
     PlacementController.init(onPlacementsChanged);
 
-    Palette.init(
-        document.getElementById("palette") as HTMLElement,
-        (type: string | null) => {
+    Palette.init({
+        container: document.getElementById("palette") as HTMLElement,
+        onSelect: (type: string | null) => {
             if (type) {
                 stopAutoPlay();
                 selectedCompId = null;
@@ -52,10 +52,10 @@ async function init(): Promise<void> {
                 PlacementController.cancel();
             }
         },
-        onInventoryChanged,
-        onCompItemChanged,
-        onCompInvChanged,
-    );
+        onInventoryChange: onInventoryChanged,
+        onCompItemChange: onCompItemChanged,
+        onCompInvChange: onCompInvChanged,
+    });
 
     // Load palette metadata for ghost rendering
     const types = await fetchComponentTypes();
@@ -158,16 +158,15 @@ async function init(): Promise<void> {
         try {
             const text = await file.text();
             const data = JSON.parse(text);
-            if (Array.isArray(data)) {
-                const res = await loadBlueprintApi(data);
-                if (res.ok) {
-                    blueprintInput.value = "";
-                    PlacementController.cancel();
-                    Palette.clearSelection();
-                    await applyLoadResponse(res);
-                } else {
-                    console.error("blueprint load failed:", res.error);
-                }
+            stopAutoPlay();
+            const res = await loadBlueprintApi(data);
+            if (res.ok) {
+                blueprintInput.value = "";
+                PlacementController.cancel();
+                Palette.clearSelection();
+                await applyLoadResponse(res);
+            } else {
+                console.error("blueprint load failed:", res.error);
             }
         } catch (err) {
             console.error("blueprint parse error:", err);
@@ -291,15 +290,16 @@ function applyLayoutResponse(res: LayoutResponse): void {
  * @param placements - Updated placements.
  */
 async function onPlacementsChanged(placements: Placement[]): Promise<void> {
+    const snapshot = [...placements];
     stopAutoPlay();
-    const res = await sendLayout(placements, inventory);
+    const res = await sendLayout(snapshot, inventory);
     if (!res.ok) {
         console.error("layout rejected:", res.error);
         PlacementController.setPlacements(lastGoodPlacements);
         return;
     }
-    console.log("layout committed:", placements.length, "components");
-    lastGoodPlacements = [...placements];
+    console.log("layout committed:", snapshot.length, "components");
+    lastGoodPlacements = [...snapshot];
     applyLayoutResponse(res);
 }
 
@@ -651,8 +651,9 @@ async function deleteSelected(): Promise<void> {
 
 /** Download current layout as a .blueprint JSON file. */
 async function onSave(): Promise<void> {
+    stopAutoPlay();
     const data = await saveBlueprint();
-    console.log("saved blueprint:", data.length, "entries");
+    console.log("saved blueprint:", data.components.length, "entries");
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);

@@ -21,20 +21,28 @@ from simulation.units.depot_access.protocol_stash import ProtocolStash
 from tests._view import render_belt, render_converger, render_splitter, render_stash, RENDER_MODES, load_test_case
 
 
-def run_single(path: Path, render: str | None = None) -> None:
-    cfg = load_test_case(path)
-    if render:
-        cfg["render"] = render
-    mode = cfg.get("render", RENDER_MODES[0])
-    f = Factory(cfg)
-    name = cfg.get("name", path.stem)
+def _collect_components(fac: Factory) -> tuple[
+    list[Conveyor],
+    list[tuple[Converger, int, int]],
+    list[tuple[Splitter, int, int]],
+    list[tuple[ProtocolStash, int, int]],
+]:
+    """Group components by type from the factory graph.
 
+    Args:
+        fac: A built Factory instance.
+
+    Returns:
+        Tuple of (conveyors, convergers, splitters, stashes) where each
+        converger/splitter/stash entry is ``(comp, x, y)``.
+    """
     convs: list[Conveyor] = []
     cvgs: list[tuple[Converger, int, int]] = []
     splts: list[tuple[Splitter, int, int]] = []
     stshs: list[tuple[ProtocolStash, int, int]] = []
-    for coord, idx in f.graph.coord_idx.items():
-        comp = f.graph.components[idx]
+
+    for coord, idx in fac.graph.coord_idx.items():
+        comp = fac.graph.components[idx]
         if isinstance(comp, Conveyor):
             convs.append(comp)
         elif isinstance(comp, Converger):
@@ -44,45 +52,91 @@ def run_single(path: Path, render: str | None = None) -> None:
         elif isinstance(comp, ProtocolStash):
             stshs.append((comp, coord.x, coord.y))
 
-    print(f"\n=== {name} ===  render={mode}")
-    print(f"  init   ", end="")
-    for comp in convs:
-        print(f"  {render_belt(comp, mode)}", end="")
-    for comp, _, _ in cvgs:
-        print(f"  cvrg {render_converger(comp, mode)}", end="")
-    for comp, _, _ in splts:
-        print(f"  splt {render_splitter(comp, mode)}", end="")
-    for comp, _, _ in stshs:
-        print(f"  stash{render_stash(comp, mode)}", end="")
-    print()
+    return convs, cvgs, splts, stshs
 
-    for t in range(cfg.get("ticks", 30)):
-        f.tick()
-        out = f"  tick={t:>3d}"
-        for comp in convs:
-            out += f"  {render_belt(comp, mode)}"
-        for comp, _, _ in cvgs:
-            out += f"  cvrg {render_converger(comp, mode)}"
-        for comp, _, _ in splts:
-            out += f"  splt {render_splitter(comp, mode)}"
-        for comp, _, _ in stshs:
-            out += f"  stash{render_stash(comp, mode)}"
-        print(out)
 
-    for coord, idx in f.graph.coord_idx.items():
-        comp = f.graph.components[idx]
+def _render_frame(
+    convs: list[Conveyor],
+    cvgs: list[tuple[Converger, int, int]],
+    splts: list[tuple[Splitter, int, int]],
+    stshs: list[tuple[ProtocolStash, int, int]],
+    mode: str,
+    label: str,
+) -> str:
+    """Build a single frame of text output.
+
+    Args:
+        convs: Conveyor instances.
+        cvgs: Converger instances with coords.
+        splts: Splitter instances with coords.
+        stshs: Stash instances with coords.
+        mode: Render mode name.
+        label: Label prefix (e.g. "init" or "tick=  0").
+
+    Returns:
+        Single-line string for this frame.
+    """
+    parts = [f"{label:<9s}"]
+    for belt in convs:
+        parts.append(f"  {render_belt(belt, mode)}")
+    for cvg, _, _ in cvgs:
+        parts.append(f"  cvrg {render_converger(cvg, mode)}")
+    for splt, _, _ in splts:
+        parts.append(f"  splt {render_splitter(splt, mode)}")
+    for stash, _, _ in stshs:
+        parts.append(f"  stash{render_stash(stash, mode)}")
+    return "".join(parts)
+
+
+def _report_unloaders(fac: Factory) -> None:
+    """Print positions of all unloader components in the graph."""
+    for coord, idx in fac.graph.coord_idx.items():
+        comp = fac.graph.components[idx]
         ct = getattr(comp, 'component_type', None)
         if ct is CT.DEPOT_ACCESS_DEPOT_UNLOADER:
             print(f"  unloader @({coord.x},{coord.y})")
 
 
+def run_single(path: Path, render: str | None = None) -> None:
+    """Load and run a single JSON test case.
+
+    Args:
+        path: Path to the JSON test case file.
+        render: Optional render mode override ("type", "binary", etc.).
+    """
+    cfg = load_test_case(path)
+    if render:
+        cfg["render"] = render
+    mode = cfg.get("render", RENDER_MODES[0])
+    fac = Factory(cfg)
+    name = cfg.get("name", path.stem)
+
+    convs, cvgs, splts, stshs = _collect_components(fac)
+
+    print(f"\n=== {name} ===  render={mode}")
+    print(_render_frame(convs, cvgs, splts, stshs, mode, "init"))
+
+    for t in range(cfg.get("ticks", 30)):
+        fac.tick()
+        print(_render_frame(convs, cvgs, splts, stshs, mode, f"tick={t:>3d}"))
+
+    _report_unloaders(fac)
+
+
 def run_all(test_dir: Path, render: str | None = None) -> None:
+    """Run all JSON test cases in a directory.
+
+    Args:
+        test_dir: Directory containing ``*.json`` test case files.
+        render: Optional render mode override.
+    """
     for j in sorted(test_dir.glob("*.json")):
         run_single(j, render)
         print()
 
 
 def main() -> None:
+    """Parse command-line arguments and run test cases."""
     args = sys.argv[1:]
     render: str | None = None
     paths: list[str] = []

@@ -6,3 +6,11 @@ from .belt import (
     ItemControlPort, 
     Splitter
 )
+
+from .pipe import (
+    Pipe,
+    PipeBridge,
+    PipeSplitter,
+    PipeConverger,
+    PipeControlPort,
+)

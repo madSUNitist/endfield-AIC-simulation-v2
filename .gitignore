@@ -19,3 +19,4 @@ frontend/static/ts/*.js.map
 build/
 
 tests/blueprints
+.codegraph

@@ -6,6 +6,7 @@ from simulation.factory import Factory
 from simulation.units.depot_access.protocol_stash import ProtocolStash
 from simulation.units.logistics_units.belt.conveyor import Conveyor
 from simulation.items.item import Item
+from simulation.items.inventory import Inventory
 from simulation._id_gen import IDGen
 
 from ._view import load_test_case
@@ -15,6 +16,7 @@ CASE2 = Path(__file__).parent / "test_cases" / "protocol_stash_two_inputs.json"
 
 
 def _get_stash(f: Factory) -> ProtocolStash:
+    """Extract the ProtocolStash component from a factory graph."""
     for comp in f.graph.components:
         if isinstance(comp, ProtocolStash):
             return comp
@@ -22,10 +24,48 @@ def _get_stash(f: Factory) -> ProtocolStash:
 
 
 def _get_conveyor(f: Factory) -> Conveyor:
+    """Extract the Conveyor component from a factory graph."""
     for comp in f.graph.components:
         if isinstance(comp, Conveyor):
             return comp
     raise AssertionError("no Conveyor in graph")
+
+
+class _MockDownstream(Conveyor):
+    """A mock downstream that accepts items and records the order."""
+
+    def __init__(self, comp_id: int):
+        super().__init__(comp_id, length=50)
+        self.received_ids: list[int] = []
+
+    def _accept_item(self, item: Item) -> bool:
+        self.received_ids.append(self.id)
+        return super()._accept_item(item)
+
+
+def test_stash_rr_123() -> None:
+    """Verify stash serves downstreams in 1-2-3 connection-order RR."""
+    g = IDGen()
+    inv = Inventory(6, g)
+    stash = ProtocolStash(0, id_gen=g, inventory=inv)
+
+    a = _MockDownstream(1)
+    b = _MockDownstream(2)
+    c = _MockDownstream(3)
+
+    stash.downstreams = [a, b, c]
+    stash._original_downstreams = [a, b, c]
+    stash.finalize()
+
+    for i in range(6):
+        stash._buffer = Item(g.next(), "ore")
+        stash.pull_requests = [a, b, c]
+        stash.fulfill_requests()
+
+    # 123 RR: downstream[0]=a, [1]=b, [2]=c, then repeat
+    assert a.received_ids == [1, 1]
+    assert b.received_ids == [2, 2]
+    assert c.received_ids == [3, 3]
 
 
 def test_stash_basic_flow() -> None:

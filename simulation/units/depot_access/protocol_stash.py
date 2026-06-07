@@ -8,9 +8,13 @@ otherwise they are stored in the inventory.
 **Zero-tick passthrough:**  When an item arrives via `_accept_item`
 and a downstream is ready, it is forwarded in the same tick without
 intermediate buffering.
+
+**Distance-priority + connection-order RR:**  Downstreams are grouped
+by topo_index (distance to sink).  Items go to the shortest-distance
+group first; within each group, 1-2-3 connection-order RR is used.
+Other paths stay idle until the shorter path is blocked.
 """
 
-from collections import defaultdict
 from typing import Optional
 
 from ..base import Base
@@ -20,7 +24,7 @@ from ...items.item import Item
 
 
 class ProtocolStash(Base):
-    """Configurable storage buffer with pass-through priority.
+    """Configurable storage buffer with distance-priority pass-through.
 
     Items flow: upstream → buffer (or immediate downstream) → inventory.
     """
@@ -37,7 +41,6 @@ class ProtocolStash(Base):
         super().__init__(comp_id)
         self._buffer: Optional[Item] = None
         self._inv = inventory
-        self._rr_groups: dict[int, int] = {}
         self._saved_pull_requests: list[Base] = []
 
     def can_pull(self) -> bool:
@@ -49,8 +52,12 @@ class ProtocolStash(Base):
         return self._buffer is not None or self._inv.count() > 0
 
     def fulfill_requests(self) -> None:
-        """Grant one item to pull requesters, short-path first,
-        round-robin within same topo_index group.
+        """Grant items to pull requesters via distance-priority 1-2-3 RR.
+
+        Groups downstreams by topo_index (distance to sink).  Items are
+        distributed to the nearest group first; only when all members
+        of that group are blocked does the stash fall back to farther
+        groups.  Within each group, 1-2-3 connection-order RR is used.
 
         Saves the current ``pull_requests`` list for later use in
         :meth:`phase2`.
@@ -58,38 +65,56 @@ class ProtocolStash(Base):
         self._saved_pull_requests = list(self.pull_requests)
         if not self.pull_requests:
             return
-        item: Item | None = None
-        if self._buffer is not None:
-            item = self._buffer
-            self._buffer = None
-        elif self._inv.count() > 0:
-            item = self._inv.pop()
-        else:
+
+        buf_item: Item | None = self._buffer
+        self._buffer = None
+        available = (1 if buf_item is not None else 0) + self._inv.count()
+
+        if available == 0:
             return
 
-        assert item is not None
+        pr_set = set(id(r) for r in self.pull_requests)
+        self.pull_requests.clear()
 
-        buckets: dict[int, list[Base]] = defaultdict(list)
-        for pr in self.pull_requests:
-            buckets[pr.topo_index].append(pr)
-
-        for ti in sorted(buckets):
-            group = buckets[ti]
+        for gidx, group in enumerate(self._distance_groups):
+            if available == 0:
+                break
             n = len(group)
-            rr = self._rr_groups.get(ti, 0)
+            if n == 0:
+                continue
+            rr = self._distance_rr[gidx]
             for _ in range(n):
-                target = group[rr % n]
+                if available == 0:
+                    break
+                target = group[rr]
                 rr = (rr + 1) % n
-                if target._accept_item(item):
-                    self._rr_groups[ti] = rr
-                    self.pull_requests.clear()
-                    return
-            self._rr_groups[ti] = rr
 
-        if self._buffer is None:
-            self._buffer = item
-        else:
-            self._inv.push(item)
+                if id(target) not in pr_set:
+                    continue
+
+                item: Item | None
+                if buf_item is not None:
+                    item = buf_item
+                    buf_item = None
+                else:
+                    item = self._inv.pop()
+                assert item is not None
+
+                if target._accept_item(item):
+                    available -= 1
+                    pr_set.discard(id(target))
+                else:
+                    if buf_item is None:
+                        buf_item = item
+                    else:
+                        self._inv.push(item)
+            self._distance_rr[gidx] = rr
+
+        if buf_item is not None:
+            if self._buffer is None:
+                self._buffer = buf_item
+            else:
+                self._inv.push(buf_item)
 
     def request_upstream(self) -> None:
         """Pull from upstreams if buffer or inventory space is available."""
@@ -119,45 +144,33 @@ class ProtocolStash(Base):
     def phase2(self) -> None:
         """Route buffered item to downstreams (zero-tick passthrough).
 
-        If pull requests exist, use short-path-first + RR routing.
-        Otherwise fall back to simple push to the first available
-        downstream using the group RR table.
+        If pull requests exist, tries downstreams in distance-priority
+        1-2-3 RR order.  Otherwise falls back to pushing to the first
+        available downstream in distance-priority order.
         """
         item = self._buffer
         if item is None:
             return
         self._buffer = None
 
-        pr = self._saved_pull_requests
-        if pr:
-            buckets: dict[int, list[Base]] = defaultdict(list)
-            for p in pr:
-                buckets[p.topo_index].append(p)
-            for ti in sorted(buckets):
-                group = buckets[ti]
-                n = len(group)
-                rr = self._rr_groups.get(ti, 0)
-                for _ in range(n):
-                    target = group[rr % n]
-                    rr = (rr + 1) % n
-                    if target._accept_item(item):
-                        self._rr_groups[ti] = rr
-                        return
-                self._rr_groups[ti] = rr
-        else:
-            # No pull requests — fallback: use _downstream_groups RR
-            for gidx, (start, end) in enumerate(self._downstream_groups):
-                n = end - start
-                if n == 0:
+        pr_set = set(id(r) for r in self._saved_pull_requests) if self._saved_pull_requests else set()
+
+        for gidx, group in enumerate(self._distance_groups):
+            n = len(group)
+            if n == 0:
+                continue
+            rr = self._distance_rr[gidx]
+            for _ in range(n):
+                target = group[rr]
+                rr = (rr + 1) % n
+
+                if self._saved_pull_requests and id(target) not in pr_set:
                     continue
-                rr = self._downstream_rr[gidx]
-                for _ in range(n):
-                    target = self.downstreams[start + rr]
-                    rr = (rr + 1) % n
-                    if target._accept_item(item):
-                        self._downstream_rr[gidx] = rr
-                        return
-                self._downstream_rr[gidx] = rr
+
+                if target._accept_item(item):
+                    self._distance_rr[gidx] = rr
+                    return
+            self._distance_rr[gidx] = rr
 
         if not self._inv.is_full():
             self._inv.push(item)
