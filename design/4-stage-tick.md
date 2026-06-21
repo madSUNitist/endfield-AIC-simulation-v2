@@ -1,273 +1,420 @@
-# Design — Cache-Based 4-Stage Tick
+# 4-Stage Tick Engine — Architecture & Implementation Plan
 
-> Status: **DESIGN LOCKED, implementation pending**. Branch: `feat/4-stage-tick`.
-> §0–§6 fix the model and the plan; §7 is the authoritative behaviour reference
-> the new engine must reproduce; §8 lists the remaining open questions.
+> Status: **LOCKED**. Branch: `feat/4-stage-tick`.
+> Full replacement of the v2 graph-traversal engine. No parallel / flag-gate.
+> §7 is the authoritative component behaviour oracle.
+
+---
 
 ## 0. Time model (LOCKED)
 
 | Unit | Meaning |
 |---|---|
 | **subtick / stage** | The atomic update step. |
-| **new tick** | `4 subticks` = the externally exposed tick. |
-| **old tick** | `2 new ticks` = `8 subticks` (the v2 / current `Factory.tick`). |
+| **new tick** | 4 subticks; the exposed API tick. |
+| **old tick** | 2 new ticks = 8 subticks (v2 `Factory.tick`). |
 
-- A component runs a phase state machine `P1 → P2 → P1 → P2 …`, toggling **once
-  per subtick**. One new tick = `[P1, P2, P1, P2]` ("1 tick = 4 phase").
-- Externally the engine advances in **new ticks**. An item moves **1 belt cell
-  per 2 new ticks** (the old "1 cell per old tick").
-- Derivation from **"4n 卡 0.5"**: 1 old tick = 8 subticks; the system drifts
-  1 subtick/old-tick, so after 4 old ticks the drift is 4 subticks = 1/2 old
-  tick = half a phase. Hence phase = 4 subticks and the model is **4-stage**.
+- A component runs a phase FSM `P1 → P2 → P1 → P2 …`, toggling once per subtick.
+  One new tick = `[P1, P2, P1, P2]`.
+- API advances in **new ticks**. Item moves **1 belt cell per 2 new ticks**
+  (old: 1 cell/old tick).
+- Derived from **"4n 卡 0.5"**: old tick = 8 subticks; drift 1 subtick/old-tick;
+  4 old ticks = 4 subtick drift = 1/2 old tick = half a phase. Therefore
+  phase = 4 subticks → **4-stage model**.
+- Consequence: all JSONC `ticks` values double (see §6).
 
-Consequence for tests: exposed tick is redefined (new tick = old 1/2 tick), so
-**all JSONC `ticks` values are doubled** (see §5).
+---
 
-## 1. Motivation
+## 1. Why the old engine is discarded (the topo-sort problem)
 
-The current engine re-traverses the full topological order **twice per old tick**
-(`Graph.tick`, `simulation/graph.py:139`). Correctness depends on the traversal
-order coinciding with an implicit request→grant ordering. Two problems:
+The v2 engine (`Graph.tick`, `simulation/graph.py:139`) re-traverses the full
+topological order twice per old tick. Correctness **depends on traversal order**
+to make `fulfill_requests` see pull requests posted by downstreams earlier in the
+same pass. This is not just a performance issue — it is a correctness dead-end:
 
-1. **Fidelity** — phenomena in `AGENTS.md` TODO (`环的手性`, `4n 卡 1` /
-   `4n 卡 0.5`), imperfectly reproduced in `expr_results/`, are *sub-tick /
-   simultaneity-sensitive*; the coarse 2-phase model cannot express a half-phase
-   drift. At the branch point 20 JSONC cases fail (converger RR, stash
-   placement-order priority) — the trigger for the rewrite.
-2. **Cost** — full-graph traversal is wasteful when most of the graph is in
-   steady state. The new model only updates components that items have reached.
+1. **Fidelity** — `AGENTS.md` TODO phenomena (`环的手性`, `4n 卡 0.5`, and 20
+   failing JSONC cases) are *sub-tick / simultaneity-sensitive*. A single-pass
+   overlay of fulfill+request cannot express a half-phase drift.
+2. **The only reason topo sort exists is to order `phase1`'s bundled
+   fulfil→request so they interlock correctly in one pass.** Once satisfy this
+   coupling by snapshot/commit (§2.4), the sort is unnecessary.
+3. **Edge-cutting breaks chirality** — `_build_order` (`graph.py:173`) cuts the
+   placement-first→last edge in every cycle. This explicitly destroys the
+   clockwise/counterclockwise preference that `环的手性` depends on.
 
-## 2. Current model recap (what we are replacing)
+The answer is **not** to fix the topo sort. It is to delete it.
 
-`Base.phase1` (`base.py:153`) bundles three sub-steps in one sink→source pass:
-`fulfill_requests()` + `self_update()` + `request_upstream()`.
-`Base.phase2` (`base.py:163`) is the source→sink zero-tick forward pass (only
-`ProtocolStash` overrides it, `protocol_stash.py:144`).
+---
 
-### Coupling points that block a clean stage split (must be removed)
+## 2. Architecture: the subtick pipeline
 
-- `Converger.request_upstream` rewrites an upstream's `pull_requests` list
-  (`converger.py:53`) — cross-node, order-sensitive mutation.
-- `Splitter.fulfill_requests` mutates `_distance_rr` and pops `pull_requests`
-  mid-pass (`splitter.py:58`).
-- `Conveyor._accept_pos` allows multiple accepts per pass (`conveyor.py:112`);
-  `Base.add_pull` is LIFO insertion (`base.py:133`).
+### 2.1 Per-component phase state machine
 
-All rely on "who runs first in the pass". The new model makes each subtick a pure
-function over the **previous subtick's frozen snapshot** (double buffering), so
-results are independent of iteration order.
+- States: **P1** / **P2**, toggling every subtick.
+- **P1**: `fulfill_requests` → `self_update` → `request_upstream` (the old `phase1`).
+- **P2**: zero-tick forward (the old `phase2`; default no-op; `ProtocolStash` overrides it).
+- Initial state: **parked at P1, not running**. The component enters the active
+  set only when an item first reaches it (see §2.2).
+- Because components are activated at different subticks, they naturally acquire
+  **different phase offsets** — the candidate mechanism for the half-phase drift.
 
-## 3. The 4-stage model (LOCKED)
+### 2.2 Activation gating (cache tier 1) — replaces topo-sort execution scoping
 
-### 3.1 Per-component phase state machine
+The engine maintains an **active set** — the only components executed per subtick.
 
-- Each component owns a phase FSM with two states: **P1** and **P2**.
-- It is **parked at P1 and does not advance** until an item first propagates to
-  it. From the first arrival onward it advances one state per subtick.
-- **P1** carries the semantics of the old `phase1` (fulfil downstream requests →
-  advance internal state → request upstream).
-- **P2** carries the semantics of the old `phase2` (zero-tick forward).
-- Because components are activated at different subticks (when items first reach
-  them), they acquire **different phase offsets** — the candidate mechanism
-  behind the half-phase drift of "4n 卡 0.5".
+- **Seed**: `DepotLoader` is active from the start (it has items to push). A
+  `ProtocolStash` with pre-filled inventory is also active from the start.
+- **Propagation**: at the end of each subtick commit, every active component
+  marks its `downstreams` for activation. Those downstreams enter the active set
+  at the **next** subtick, at P1.
+- **Effect**: the active set grows along item-flow paths, exactly tracking which
+  parts of the graph have been "reached." Components never touched by items never
+  execute. This is the first tier of cache — making the engine run only the
+  relevant sub-graph, with zero static analysis.
 
-### 3.2 Activation gating
+```
+DepotLoader (active, subtick 0, P1)
+    → marks Conveyor[0] pending
+Conveyor[0] (active, subtick 1, P1)
+    → marks Conveyor[1] pending
+    …
+```
 
-- The scheduler maintains an **active set**. A component enters it when an item
-  first reaches it (or it is an always-on source that has items to push).
-- Each subtick only the active set runs — "一次只需要更新部分组件".
-- v1: once active, stay active (correct but not yet optimised). Deactivation /
-  re-parking to P1 on going idle is a §4 (cache) optimisation.
+### 2.3 Why topo sort is unnecessary
 
-### 3.3 Snapshot → commit per subtick
+In the subtick pipeline, dependency resolution works as follows:
 
-- Each subtick: read the frozen snapshot of the previous subtick's state, compute
-  each active component's next state into a fresh buffer, then **commit** (swap).
-- This removes the three coupling points in §2 by construction.
+1. At subtick _t_, a downstream `D` (active, in P1) runs `request_upstream` and
+   writes a pull request into its own **outbox** (not into the upstream's live
+   state — see §2.4).
+2. The outbox is committed at the end of subtick _t_. Upstream `U` sees the pull
+   in the snapshot it reads at subtick _t+1_.
+3. `U` resolves it at its **next P1** (which may be subtick _t+1_ or _t+2_,
+   depending on phase offset).
 
-## 4. Cache (deferred — "correct first, cache later")
+The key property: **no component reads another component's live state.** Every
+read goes through the snapshot. Every write goes through the outbox. Therefore
+the order in which components execute within a single subtick is irrelevant —
+each reads only the frozen state of the previous subtick. The pipeline's cadence
+(subtick→commit→subtick) is the only ordering the system needs.
 
-- **Activation gating (§3.2) is core**, already restricting work to reached
-  components.
-- **Deactivation / parking**: a component returns to idle (parked P1, removed
-  from active set) when it holds no item and has no pending request; re-activated
-  on the next inbound item. This recovers steady-state savings.
-- **Memoisation**: cache resolved request→grant decisions / propagation closures
-  for stable sub-graphs; invalidate via dirty-flag propagation across ports when
-  buffer occupancy or neighbour availability changes.
-- Granularity (per-component vs per-region) and the invalidation contract are
-  decided in the cache phase, after correctness is locked against §5.
+This eliminates the Kahn sort / edge-cut / `_build_order` in `graph.py` entirely.
+The Graph shrinks to pass 1 (instantiation) + pass 2 (port connections) only.
 
-## 5. Compatibility
+### 2.4 Snapshot → commit per subtick — eliminates the three coupling points
 
-- Oracle: the JSONC suite (`tests/units/**/*.jsonc`). Target: keep the 52
-  currently-passing cases green; flip the 20 currently-failing ones.
-- **`ticks` ×2 migration** (exposed tick redefined):
-  - `integration` (end-state) cases: multiply `ticks` by 2 — clean, because the
-    new model's even-subtick boundary coincides with the old tick boundary.
-  - `temporal` / `observe` cases: sampled per tick. Under new ticks they observe
-    sub-tick intermediate states the old model never exposed, so their sequences
-    change meaning and **cannot be mechanically ×2** — review case-by-case.
-  - `Factory.run` default tick count (`max(len(order)*2+10, 20)`, `factory.py`)
-    is in old-tick units → ×2.
-- Public surface: `Factory.tick()` / `Factory.run()` and `/api/tick` now advance
-  one **new** tick; the frontend speed/step mapping must account for 2× ticks per
-  belt cell.
+Each subtick is executed in three phases:
 
-## 6. Implementation plan
+1. **Read** — extract a frozen snapshot containing every active component's
+   `can_pull()` result, buffer/slot occupancy, current `_distance_rr`, and the
+   aggregate list of pull requests addressed to it (merging outboxes from the
+   previous subtick).
+2. **Step** — each active component runs its current `P1` or `P2` logic.
+   **All state writes go to a per-component outbox** (new pull requests to
+   upstreams, new RR indices, buffer/slot updates, item transfers). No component
+   ever writes directly into another component's live state.
+3. **Commit** — the engine merges outboxes: pull requests are delivered to their
+   target components' state; RR indices / buffers / slots are atomically swapped
+   in. The active set is updated (pending activations added). All live state for
+   the next subtick is now frozen.
 
-1. **New engine module, parallel to old.** Add `simulation/engine/` (subtick
-   scheduler + active set + snapshot/commit) without deleting `graph.tick`; gate
-   behind a flag so both can run for diffing.
-2. **`Base` refactor.** Replace `phase1`/`phase2` hooks with: a phase-FSM field,
-   `step()` dispatching to `_p1()` / `_p2()`, and pure snapshot-reading +
-   buffered-write helpers. Keep `fulfill_requests` / `request_upstream` /
-   `self_update` / `_accept_item` semantics but route them through the buffer.
-3. **Scheduler.** Drive a global subtick counter; each subtick runs the active
-   set in their current phase over a frozen snapshot, then commits and toggles
-   FSMs; manage activation (seed on first item arrival).
-4. **Cycle handling without edge-cutting.** Drop the placement-first→last edge
-   cut in `graph._build_order` for the new engine; loops resolve via snapshot
-   reads, and **chirality** emerges from subtick ordering + deterministic
-   tiebreak (target: reproduce `环的手性`).
-5. **Belt-advance cadence.** Conveyor still moves 1 cell per old tick = once per
-   8 subticks; pin which subtick performs the shift (initial guess, tuned to
-   match observations).
-6. **Test migration.** Script the `ticks ×2` rewrite for `integration` cases;
-   hand-review `temporal`/`observe` cases; keep `unit`/`hybrid` cases as direct
-   API checks.
-7. **Validation.** Parallel diff new vs old engine on the 52 passing cases;
-   add a **subtick-level observation harness** to verify the "4n 卡 0.5" drift;
-   then run `uv run mypy .` + `uv run pytest`.
+This eliminates the three coupling points from the old model by construction:
+- `Converger.request_upstream` mutating upstream's `pull_requests` (`converger.py:53`)
+- `Splitter.fulfill_requests` mutating `_distance_rr` mid-pass (`splitter.py:58`)
+- `Conveyor._accept_pos` supporting multiple accepts per pass / `add_pull` LIFO (`conveyor.py:112`, `base.py:133`)
 
-## 7. Current component behaviour reference (authoritative)
+---
 
-This section is the behavioural contract the new engine must reproduce. It
-documents the **current on-disk implementation** as the source of truth.
+## 3. Distance-based routing — without topo sort
+
+The *old* reason to keep topo sort was `topo_index` used by Splitter and
+ProtocolStash for distance-priority RR. The *new* way: a simple **multi-source
+BFS from sinks**.
+
+### 3.1 BFS distance-to-sink
+
+```
+for each DepotUnloader (sink):
+    queue.push(sink, distance=0)
+
+while queue:
+    (component, dist) = queue.pop()
+    for each upstream of component:
+        if not visited:
+            component.distance_to_sink = dist + 1
+            queue.push(upstream, dist + 1)
+```
+
+- Belt loops: BFS is shortest-path only and terminates — a loop cell gets the
+  **minimum** distance from any sink, which is the correct routing metric (nearest
+  sink wins).
+- **Zero edge-cutting** — BFS reads distance, it does not break cycles.
+- This runs **once** at engine initialisation (after Graph pass 2). It replaces
+  everything in `graph._build_order`: the Kahn loop, the inline DFS cycle-breaker,
+  the layer computation, and the final sort (`graph.py:152–276`).
+
+### 3.2 `distance_to_sink` → the new `topo_index`
+
+- `distance_to_sink` is stored as a per-component field.
+- `finalize()` and `_build_distance_groups` still work exactly as before, now keyed on
+  `distance_to_sink` instead of `topo_index`.
+- Lower distance = nearer sink = higher routing priority — same semantics,
+  computed without any sort or edge-cut.
+
+---
+
+## 4. Cache architecture
+
+Cache is **not deferred** — activation gating is cache tier 1 and is part of the
+engine from the start. The three tiers:
+
+### Tier 1 — Activation gating (integral to the engine, §2.2)
+Only components reached by items execute. Without this, the engine would execute
+the full component list every subtick. This is the fundamental efficiency gain
+over full-graph traversal.
+
+### Tier 2 — Deactivation / parking
+A component that stays idle (holds no item, has no pending pull request, and all
+its neighbours are also stable) is **parked back to P1 and removed from the active
+set**. It re-enters when the next item arrives. This is what keeps a
+steady-state belt from running 4× per new tick forever. The exact deactivation
+predicate is a tuning knob (§9).
+
+### Tier 3 — Steady-state region memoisation
+Stable sub-graphs (e.g. a full saturated belt segment) can cache their per-subtick
+"null transform" (no state change) and be skipped at the dirty-check level before
+reaching the component step. Invalidation: any item entering/exiting the region
+marks it dirty, forcing re-eval for one subtick. This is a performance
+optimisation implemented after correctness is verified.
+
+---
+
+## 5. What happens to `Graph`
+
+| Pass | Fate |
+|---|---|
+| Pass 1 — instantiation (`graph.py:64–80`) | **Kept.** Iterates placements, creates component instances, builds `cell_origin`/`origin_cells`. |
+| Pass 2 — port connections (`graph.py:82–127`) | **Kept.** Bilateral port matching, `add_link` calls, `_owner_downstreams` recording. |
+| Pass 3 — Kahn sort + edge-cut + topo_index (`graph.py:129–276`) | **Deleted entirely.** Replaced by: BFS `distance_to_sink` (§3.1) + `Engine` (§2). |
+| `graph.tick()` | **Deleted.** Replaced by `Engine.tick()`. |
+| `graph.order` / `graph.order_coords` | **Deleted.** No longer meaningful — execution order is at the mercy of the subtick pipeline. |
+
+### 5.1 New `Engine` class (`simulation/engine.py`)
+
+```python
+class Engine:
+    components: list[Base]           # from Graph pass 1
+    active: set[int]                 # component ids
+    pending_activation: set[int]     # ids activating next subtick
+    subtick: int                     # global monotonic counter
+    snapshot: Snapshot               # frozen view for current subtick
+    outboxes: dict[int, Outbox]      # per-component writes, merged at commit
+
+    def tick() -> None:              # advance 4 subticks (= 1 new tick)
+    def _subtick_advance() -> None:  # read snapshot → step active set → commit
+```
+
+### 5.2 `Factory` integration
+
+- `Factory.__init__` still builds `Layout` + `Graph` (passes 1–2). It then calls
+  `Engine(graph.components)`, runs BFS distance-to-sink, calls `comp.finalize()`
+  on each component.
+- `Factory.tick()` delegates to `self.engine.tick()`.
+- `Factory.run(ticks)` default formula doubles: `max(self.engine.component_count * 4 + 20, 40)`.
+
+---
+
+## 6. Compatibility & test migration
+
+- Oracle: `tests/units/**/*.jsonc`, 52 passing + 20 currently failing.
+- Target: keep the 52 green; flip the 20.
+- **`ticks` ×2**:
+  - `integration` cases: `ticks` value ×2. Clean — end-state at an even tick
+    boundary coincides with old tick boundary.
+  - `temporal` / `observe` cases: sampled per-tick. Under new ticks they see
+    intermediate sub-tick states. **Cannot be mechanically ×2** — hand-review
+    each, updating observation windows and sequences.
+  - `unit` / `hybrid` cases: direct API checks; `ticks` value likely unchanged
+    (they set up standalone instances, not a factory).
+- `Factory.run` default ticks doubles.
+- Frontend `/api/tick`: advances 1 new tick. The frontend must account for 2×
+  ticks per belt cell.
+
+---
+
+## 7. Component behaviour reference (authoritative)
+
+This is the behavioural contract the new engine must reproduce. It documents the
+**current on-disk implementation** as the source of truth.
 
 ### 7.1 Core protocol (`Base`, `units/base.py`)
 
 - **Adjacency**: `add_link` populates `upstreams` / `downstreams` and
   `in_degree` / `out_degree` by `LinkType`.
-- **Pull queue / priority**: `add_pull(requester)` inserts at the **front**
+- **Pull queue / priority**: `add_pull(requester)` inserts at the front
   (index 0) of `pull_requests`; consumers `pull_requests.pop(0)`. Net effect:
-  **the most recently registered requester is served first (LIFO priority)**.
-- **`finalize()`** (after topo sort): snapshots `_original_downstreams`; sorts
-  `downstreams` by `topo_index`; builds `_downstream_groups` (index ranges of
-  equal `topo_index`) with parallel `_downstream_rr`; then `_build_distance_groups`.
-- **`_build_distance_groups()`**: buckets `_original_downstreams` by `topo_index`
-  and orders buckets **ascending** (`_distance_groups`). Lower `topo_index` =
-  **nearer a sink = higher routing priority**. Connection order is preserved
-  within a bucket; `_distance_rr` starts at 0 per group.
-- **`topo_index`**: layer = distance to sink (sinks = 0), computed in
-  `graph._build_order`.
-- **`_owner_downstreams`**: downstreams this component connected during graph
-  pass 2; downstreams connected later by *other* components are "foreign".
-- **Tick hooks (current)**: `phase1` = `fulfill_requests` + `self_update` +
-  `request_upstream`; `phase2` = no-op by default. `can_pull` default `False`;
-  `self_update` default no-op; `_accept_item` abstract.
+  the most recently registered requester is served first (**LIFO priority**).
+- **`finalize()`**: snapshots `_original_downstreams`; sorts `downstreams` by
+  `topo_index` (→ `distance_to_sink` under the new engine); builds
+  `_downstream_groups` (ranges of equal topo_index) with parallel
+  `_downstream_rr`; then calls `_build_distance_groups`.
+- **`_build_distance_groups()`**: buckets `_original_downstreams` by topo_index,
+  orders buckets **ascending** (nearest sink first). Connection order preserved
+  within a bucket. `_distance_rr` starts at 0 per group.
+- **`_owner_downstreams`**: downstreams this component connected during port
+  matching; downstreams connected later by *other* components are "foreign."
+- **`can_pull`** default `False`. **`self_update`** default no-op.
+  **`_accept_item`** abstract.
 
 ### 7.2 Conveyor (`belt/conveyor.py`) — 1-in / 1-out, fixed-length FIFO
 
 - Slot array: `slots[0]` = tail/exit, `slots[length-1]` = head/entry; `_count`.
-- **At most one downstream** (asserted on `OUTPUT` link).
-- `can_pull`: tail (`slots[0]`) occupied.
-- `fulfill_requests`: if tail occupied **and** a request exists, pop the tail and
-  give it to `pull_requests.pop(0)`; **restore** the tail slot if rejected.
-- `self_update`: shift items one slot toward the tail (scan `i=1..length-1`: if
-  `slots[i-1]` empty and `slots[i]` full, move it down). **One slot per tick**,
-  relative order preserved, compaction toward exit. Resets `_accept_pos`.
-- `request_upstream`: if head empty and `upstreams[0].can_pull()`, `add_pull(self)`.
-- `_accept_item`: rejects if full; otherwise writes at `_accept_pos` working
-  backward from the head, so **multiple accepts per tick** are supported.
+- At most one downstream (assert on OUTPUT link).
+- `can_pull`: tail occupied.
+- `fulfill_requests`: if tail occupied and a request exists, pop tail and give
+  to `pull_requests.pop(0)`; restore on reject.
+- `self_update`: shift items one slot toward tail (i=1..length-1: if slot[i-1]
+  empty and slot[i] full, move). One slot per invocation. Resets `_accept_pos`.
+- `request_upstream`: if head empty and upstreams[0].can_pull, `add_pull(self)`.
+- `_accept_item`: rejects if full; writes at `_accept_pos` backward from head.
+  Supports multiple accepts per tick.
 
 ### 7.3 Splitter (`belt/splitter.py`) — 1-to-N, single-slot buffer
 
 - `can_pull`: buffer occupied.
 - `fulfill_requests` (grants **one** item):
-  1. If buffer empty → clear `pull_requests`, return. If no requests → return.
-  2. **Foreign downstreams first**: the first requester not in
-     `_owner_downstreams` is served, then return.
-  3. Otherwise iterate `_distance_groups` (**nearest sink first**); within a
-     group use round-robin with **increment-before-select**
-     (`rr=(rr+1)%n`, then pick `group[rr]`); serve the matching requester, return.
-  4. If nothing matched → clear `pull_requests`.
-- `request_upstream`: if buffer empty and `upstreams[0].can_pull()`, `add_pull(self)`.
+  1. Buffer empty → clear pull_requests, return. No requests → return.
+  2. **Foreign downstreams first**: serve the first requester not in `_owner_downstreams`.
+  3. Iterate `_distance_groups` (nearest sink first); within a group, RR with
+     **increment-before-select** (`rr=(rr+1)%n`, pick `group[rr]`); serve match.
+  4. Nothing matched → clear pull_requests.
+- `request_upstream`: if buffer empty, upstreams[0].can_pull → `add_pull(self)`.
 - `_accept_item`: accept iff buffer empty.
-- **Note / doc gap**: `AGENTS.md` "Converger Priority" claims Splitter overrides
-  `_build_distance_groups` to force Convergers highest. **No such override exists
-  in code** — converger priority arises only from generic `topo_index` distance
-  grouping. Reproduce the code, not the stale doc.
+
+> AGENTS.md claims Splitter overrides `_build_distance_groups` for Converger
+> priority. **No such override exists in code.** Converger priority arises only
+> from generic `distance_to_sink` grouping.
 
 ### 7.4 Converger (`belt/converger.py`) — N-to-1, single-slot buffer
 
 - `can_pull`: buffer occupied.
 - `fulfill_requests`: give buffer to `pull_requests.pop(0)`; restore on reject.
-- `request_upstream`: if buffer occupied → skip. First **remove `self` from every
-  upstream's `pull_requests`**. Then:
+- `request_upstream`: if buffer occupied → skip. Remove self from every
+  upstream's `pull_requests`. Then:
   - if any **shared** upstream (`out_degree > 1`) can pull → broadcast
-    `add_pull(self)` to **all** upstreams that can pull (insert-order/LIFO
-    priority decides who actually delivers);
-  - else (all dedicated) → `add_pull(self)` to the **first** upstream that can
-    pull, and return.
+    `add_pull(self)` to all upstreams that can pull;
+  - else → `add_pull(self)` to the first upstream that can pull.
 - `_accept_item`: accept iff buffer empty.
 
 ### 7.5 ProtocolStash (`depot_access/protocol_stash.py`) — buffer + Inventory(6×50), zero-tick
 
 - `can_pull`: buffer occupied **or** inventory non-empty.
-- `fulfill_requests`: saves `_saved_pull_requests`; computes
-  `available = (buffer?1:0) + inv.count`; distributes across `_distance_groups`
-  (nearest sink first) with per-group RR, only to requesters in the saved set;
-  draws from buffer first then inventory; restores on reject; leftover returns to
-  buffer (or inventory).
-- `request_upstream`: skip iff buffer occupied **and** inventory full; otherwise
-  `add_pull(self)` to **every** upstream that can pull.
-- `_accept_item`: into buffer if empty, else into inventory if not full, else reject.
-- `phase2` (**zero-tick passthrough**): if the buffer holds an item, route it to
+- `fulfill_requests`: saves pulls, distributes `available = (buffer?1:0) +
+  inv.count()` across `_distance_groups` RR to pull-requesters; buffer first,
+  then inventory; restores on reject.
+- `request_upstream`: skip iff buffer occupied and inv full; else `add_pull`
+  to every upstream that can pull.
+- `_accept_item`: buffer if empty, else inventory if not full, else reject.
+- `_p2` (zero-tick passthrough, was `phase2`): if buffer occupied, route to
   downstreams in distance-priority RR (honouring saved pull requests); if none
-  accept, push to inventory (or keep in buffer if inventory full). This is the
-  "skip the buffer when a downstream can take it immediately" behaviour.
+  accept, stash in inventory or keep in buffer.
 
 ### 7.6 DepotLoader (`depot_access/depot_loader.py`) — source, fixed item type
 
 - `can_pull`: `inv.count(item_type) > 0`.
-- `fulfill_requests`: if a request exists, pop one `item_type` from the inventory
-  and give to `pull_requests.pop(0)`; push back on reject.
-- `request_upstream`: no-op (it is a source).
-- `_accept_item`: always `False` (never accepts).
+- `fulfill_requests`: pop one `item_type` from inv, give to
+  `pull_requests.pop(0)`; push back on reject.
+- `request_upstream`: no-op.
+- `_accept_item`: always `False`.
 
 ### 7.7 DepotUnloader (`depot_access/depot_unloader.py`) — sink
 
 - `can_pull`: `False`.
 - `fulfill_requests`: no-op.
-- `request_upstream`: if `upstreams[0].can_pull()`, `add_pull(self)`.
-- `_accept_item`: `inv.push(item)` (succeeds unless inventory full).
+- `request_upstream`: upstreams[0].can_pull → `add_pull(self)`.
+- `_accept_item`: `inv.push(item)`.
 
 ### 7.8 Item model (`items/`)
 
 - **Item**: unique `id` + hashable `type`; hashes on `(id, type)`.
-- **ItemStack**: single `type`, `capacity` (default 50), `count`. `pop` mints a
-  **new** `Item` with a fresh id; `push` rejects on type mismatch or when full.
-- **Inventory**: fixed slot list. `push` → first compatible (same type, not full)
-  or empty slot (new stack capacity 50). `pop(type)` → first matching slot,
-  clearing emptied slots. `count(type)` totals across slots. `is_full` → every
-  slot present **and** at capacity. Factory global inventory = 50 slots;
-  ProtocolStash inventory = 6 slots.
+- **ItemStack**: single type, capacity (default 50), count. `pop` mints new Item
+  with fresh id. `push` rejects on type mismatch or full.
+- **Inventory**: fixed slot array. `push` → first compatible/empty slot. `pop(type)`
+  → first matching slot, clears emptied slot. `count(type)`. `is_full` → every
+  slot present and at capacity. Global inventory = 50 slots; ProtocolStash = 6.
 
 ### 7.9 Stubs (raise `NotImplementedError`)
 
-`BeltBridge`, `ItemControlPort`, and all pipe / power / production / conduit /
-fluid-tank units are stubs. The new engine need not implement them but must not
-regress their stub status.
+`BeltBridge`, `ItemControlPort`, all pipe / power / production / conduit /
+fluid-tank units — keep as stubs unchanged.
 
-## 8. Open questions
+---
 
-1. **Exact P1/P2 operation split at subtick granularity** — confirm the precise
-   per-subtick semantics against observations (§3.1 is the working model).
-2. **Belt-advance subtick** — which of the 8 subticks performs the 1-cell shift
-   (§6.5).
-3. **Chirality** — does snapshot + subtick ordering alone reproduce `环的手性`,
-   or is an explicit tiebreak rule needed (§6.4)?
-4. **Deactivation predicate** — exact idle condition for re-parking (§4).
-5. **`temporal`/`observe` re-timing** — per-case decisions for the non-mechanical
-   migrations (§5).
+## 8. Implementation plan (ordered, no flag-gate)
+
+### Step 1 — Scaffold `Engine` + outbox model (`simulation/engine.py`)
+- `Engine` class with `components`, `active`/`pending_activation` sets, `subtick`
+  counter, per-component `Outbox` dataclass.
+- `Snapshot` read helper: collects `can_pull`, buffer/slot snapshots, aggregated
+  pull requests from previous commit.
+- `tick()` runs 4 subticks.
+- **No integration with Factory yet** — tested with unit-mode mocks.
+
+### Step 2 — Add FSM + outbox hooks to `Base`
+- `_phase: int` (0=P1, 1=P2), `_active: bool`, `activate()`.
+- `step(subtick, snapshot, outbox)` dispatches to `_run_p1` / `_run_p2`.
+- `_run_p1`: `fulfill_requests()` → `self_update()` → `request_upstream()`. All
+  cross-node writes go to `outbox` (pull requests are `outbox.add_pull(target_id)`,
+  not direct `target.add_pull(self)`).
+- `_run_p2`: `phase2()` (only ProtocolStash has logic).
+- Old `phase1`/`phase2` kept temporarily as implementation reference; deleted
+  after all components verified.
+
+### Step 3 — Wire Engine into Factory (replace `graph.tick`)
+- `Factory.__init__` builds Graph passes 1–2, then creates `Engine(graph.components)`.
+- Run BFS distance-to-sink (§3.1).
+- `comp.finalize()` on each component (now keyed on `distance_to_sink`).
+- `Factory.tick()` → `self.engine.tick()`.
+- **Delete** `graph.tick()`, `graph.order`, `graph.order_coords`,
+  `graph._build_order` (lines 129–276 of `graph.py`).
+- **Delete** `Graph.tick` (lines 139–150).
+- **Delete** `topo_index` field from Base; add `distance_to_sink`.
+
+### Step 4 — Components: migrate writes from direct → outbox
+- Every `target.add_pull(self)` → `outbox.add_pull(target_id)`.
+- Every `target._accept_item(item)` → `outbox.transfer(target_id, item)`.
+- Every `_distance_rr` mutation stays local but commits to outbox for snapshot.
+- `Converger.request_upstream`'s cross-node pull_requests removal becomes an
+  outbox-driven diff: the engine merges outboxes after collecting all.
+
+### Step 5 — Test ×2 migration
+- Script: `tools/migrate_ticks.py` → for each `integration` case, multiply
+  `"ticks"` by 2.
+- Hand-review `temporal`/`observe` cases; list the per-case decisions.
+
+### Step 6 — Validation
+- Run `uv run pytest -k` on the 52 previously-passing cases — must be green.
+- Run the 20 previously-failing cases — should now pass or progress.
+- Add subtick-level observation harness to verify "4n 卡 0.5" drift.
+- Run `uv run mypy .`.
+
+---
+
+## 9. Open questions
+
+1. **P1/P2 exact behavior at subtick granularity** — the working model (§2.1)
+   maps P1 to fulfill+update+request and P2 to zero-tick forward. Confirm this
+   split against observed game behavior; it may need sub-tuning.
+2. **Belt-advance cadence** — which subtick triggers the 1-cell shift (once per
+   8 subticks = once per old tick). Conveyor maintains an internal counter mod
+   some value.
+3. **Deactivation predicate** — the exact condition for a component to park
+   (idle) and leave the active set. Candidate: holds no item, no pending pull
+   request, all downstreams parked, and no item in transit toward it.
+4. **Chirality** — does snapshot + subtick ordering alone reproduce `环的手性`,
+   or is an explicit tiebreak needed?
+5. **`temporal`/`observe` re-timing** — per-case decisions for non-mechanical
+   migrations.
+6. **Frontend `/api/tick`** — the API now delivers 1 new tick (4 subticks) per
+   call. Does the frontend need adaptation (2× call rate), or is a new subtick
+   API needed?
