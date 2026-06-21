@@ -1,7 +1,8 @@
 """Converger unit — merges items from multiple inputs to one output.
 
-Holds a single-slot buffer and uses round-robin selection across upstreams,
-checking can_pull() before registering a pull request.
+Holds a single-slot buffer.  Prefers dedicated upstreams (out_degree==1)
+over shared upstreams (out_degree>1).  Among same-priority upstreams,
+picks the first in connection order (upstreams list) that has items.
 """
 
 from ....items.item import Item
@@ -9,7 +10,7 @@ from ...base import Base
 
 
 class Converger(Base):
-    """N-to-1 item merge component with a single-slot buffer and RR upstream."""
+    """N-to-1 item merge component with single-slot buffer."""
 
     def __init__(self, comp_id: int) -> None:
         """Initialise a converger with an empty buffer.
@@ -19,7 +20,6 @@ class Converger(Base):
         """
         super().__init__(comp_id)
         self._buffer: Item | None = None
-        self._skip_idx: int = 0
 
     def can_pull(self) -> bool:
         """Check whether the buffer holds an item.
@@ -40,19 +40,30 @@ class Converger(Base):
             self._buffer = item
 
     def request_upstream(self) -> None:
-        """RR scan upstreams, pull from the first that can provide.
+        """Request from upstreams.
 
-        Skips full upstreams using ``_skip_idx`` for fair round-robin.
+        When a shared upstream (out_degree>1) is available: broadcast
+        to all, letting insert-order priority determine delivery.
+        When all upstreams are dedicated: single-request to first
+        available in connection order.
         """
         if self._buffer is not None:
             return
-        n = len(self.upstreams)
-        for _ in range(n):
-            up = self.upstreams[self._skip_idx]
-            self._skip_idx = (self._skip_idx + 1) % n
-            if up.can_pull():
-                up.add_pull(self)
-                return
+
+        for up in self.upstreams:
+            up.pull_requests = [r for r in up.pull_requests if r is not self]
+
+        has_shared = any(up.out_degree > 1 and up.can_pull() for up in self.upstreams)
+
+        if has_shared:
+            for up in self.upstreams:
+                if up.can_pull():
+                    up.add_pull(self)
+        else:
+            for up in self.upstreams:
+                if up.can_pull():
+                    up.add_pull(self)
+                    return
 
     def _accept_item(self, item: Item) -> bool:
         """Accept an item into the single-slot buffer.

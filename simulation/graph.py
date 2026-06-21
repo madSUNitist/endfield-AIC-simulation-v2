@@ -81,6 +81,7 @@ class Graph(object):
 
         # Pass 2
         edges: Set[Tuple[Vec, Vec]] = set()
+        processed: Set[Vec] = set()
 
         for coord, idx in self.coord_idx.items():
             comp = self.components[idx]
@@ -96,6 +97,9 @@ class Graph(object):
 
                 target_origin = cell_origin.get(target)
                 if target_origin is None:
+                    continue
+
+                if target_origin not in processed:
                     continue
 
                 target_comp = self.components[self.coord_idx[target_origin]]
@@ -119,8 +123,14 @@ class Graph(object):
                         target_comp.add_link(comp, LinkType.OUTPUT)
                         edges.add(edge)
 
+            comp._owner_downstreams = list(comp.downstreams)
+            processed.add(coord)
+
         # Pass 3
         self._build_order(comp_map)
+
+        for pos, idx in enumerate(self.order):
+            self.components[idx]._exec_pos = pos
 
         # Finalize: sort downstreams and build group tables
         for comp in self.components:
@@ -130,7 +140,7 @@ class Graph(object):
         """Execute one simulation tick.
 
         Phase 1 (order = sinks → sources):
-          fulfil_requests() + request_upstream() for each component.
+          fulfil_requests() + self_update() + request_upstream().
         Phase 2 (reverse order, sources → sinks):
           default no-op; overridden for zero-tick forwarding.
         """
@@ -140,59 +150,130 @@ class Graph(object):
             self.components[idx].phase2()
 
     def _build_order(self, comp_map: Dict[int, int]) -> None:
-        """BFS layered Kahn topological sort from sinks backward toward sources.
+        """O(n²) topological sort with inline cycle breaking.
 
-        Each layer collects all nodes whose immediate downstreams have
-        already been processed, producing a sink-distance metric naturally
-        aligned with topo_index (0 = sink, higher = farther from sink).
-        Within each layer, nodes are ordered by placement index.
+        Repeatedly picks sinks (out_deg == 0), appends them to ``order``
+        sorted by placement index, and decrements upstream out-degrees.
+        When no sink is available (a cycle blocks progress), a DFS along
+        downstream edges discovers the cycle, cuts the edge from the
+        placement-last node (sink) to the placement-first node (source),
+        and continues.
+
+        This produces a deterministic reverse-topological order (sinks
+        first, sources last) even in the presence of cycles, without
+        special-casing belt loops.
 
         Args:
             comp_map: Maps component ID to its index in ``components``.
         """
         n = len(self.components)
         out_deg = [len(c.downstreams) for c in self.components]
+        cut_edges: set[tuple[int, int]] = set()  # (from_idx, to_idx)
 
-        layer = sorted(i for i, d in enumerate(out_deg) if d == 0)
+        def _break_one_cycle() -> bool:
+            """DFS from the first unvisited node with out_deg > 0.
 
-        while layer:
-            next_layer: list[int] = []
-            for idx in layer:
-                self.order.append(idx)
-                self.order_coords.append(self.idx_coord[idx])
-                comp = self.components[idx]
-                for up in comp.upstreams:
-                    uc = comp_map.get(up.id)
-                    if uc is None:
+            Cuts the edge (sink → source) where *source* is the
+            placement-first node and *sink* is the placement-last node
+            in the discovered cycle.  Returns True if a cycle was found
+            and broken, False if no cycle remains (should not happen
+            when called from the main loop).
+            """
+            # Pick a starting node still stuck in a cycle.
+            start: int | None = None
+            for i in range(n):
+                if out_deg[i] > 0 and i not in visited:
+                    start = i
+                    break
+            if start is None:
+                return False
+
+            path: list[int] = []
+            path_set: set[int] = set()
+
+            exploring: set[int] = set()  # local to this DFS pass — do NOT pollute visited
+
+            def dfs_cycle(current: int) -> bool:
+                """Walk downstreams; return True when a cycle is cut."""
+                if current in path_set:
+                    # Cycle detected.
+                    cycle_start = path.index(current)
+                    cycle = path[cycle_start:]
+                    source = min(cycle)  # placement-first
+                    sink = max(cycle)    # placement-last
+                    cut_edges.add((sink, source))
+                    out_deg[sink] -= 1
+                    return True
+
+                if current in visited or current in exploring:
+                    return False
+
+                exploring.add(current)
+                path.append(current)
+                path_set.add(current)
+
+                comp = self.components[current]
+                for down in comp.downstreams:
+                    dc = comp_map.get(down.id)
+                    if dc is None:
                         continue
-                    if out_deg[uc] > 0:
-                        out_deg[uc] -= 1
-                        if out_deg[uc] == 0:
-                            next_layer.append(uc)
-            layer = sorted(next_layer)
+                    if (current, dc) in cut_edges:
+                        continue
+                    if dfs_cycle(dc):
+                        return True
 
-        # Cycle fallback: any remaining unvisited nodes
-        remaining = sorted(i for i, d in enumerate(out_deg) if d > 0)
-        if remaining:
-            self.order.extend(remaining)
-            for idx in remaining:
-                self.order_coords.append(self.idx_coord[idx])
+                path.pop()
+                path_set.discard(current)
+                return False
+
+            return dfs_cycle(start)
+
+        visited: set[int] = set()
+
+        while len(self.order) < n:
+            sinks = sorted(
+                i for i in range(n)
+                if out_deg[i] == 0 and i not in visited
+            )
+
+            if sinks:
+                for idx in sinks:
+                    self.order.append(idx)
+                    self.order_coords.append(self.idx_coord[idx])
+                    visited.add(idx)
+                    comp = self.components[idx]
+                    for up in comp.upstreams:
+                        uc = comp_map.get(up.id)
+                        if uc is None:
+                            continue
+                        if (uc, idx) in cut_edges:
+                            continue
+                        if out_deg[uc] > 0:
+                            out_deg[uc] -= 1
+            else:
+                if not _break_one_cycle():
+                    remainder = sorted(i for i in range(n) if i not in visited)
+                    for idx in remainder:
+                        self.order.append(idx)
+                        self.order_coords.append(self.idx_coord[idx])
+                        visited.add(idx)
+                    break
 
         layers: dict[int, int] = {}
-        for idx in self.order:
+        for idx in reversed(self.order):
             comp = self.components[idx]
-            if not comp.downstreams:
-                layers[idx] = 0
-            else:
-                dc_ids: list[int] = []
-                for d in comp.downstreams:
-                    did = comp_map.get(d.id)
-                    if did is not None and did in layers:
-                        dc_ids.append(did)
-                layers[idx] = 0 if not dc_ids else 1 + max(layers[c] for c in dc_ids)
+            up_ids: list[int] = []
+            for u in comp.upstreams:
+                uid = comp_map.get(u.id)
+                if uid is not None and uid in layers and (uid, idx) not in cut_edges:
+                    up_ids.append(uid)
+            layers[idx] = 0 if not up_ids else 1 + max(layers[c] for c in up_ids)
 
         for idx, l in layers.items():
             self.components[idx].topo_index = l
+
+        self.order.sort(key=lambda idx: (-self.components[idx].topo_index, idx))
+        self.order_coords = [self.idx_coord[idx] for idx in self.order]
 
     @staticmethod
     def _has_compatible_counterpart(

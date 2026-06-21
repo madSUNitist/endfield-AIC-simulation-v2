@@ -34,8 +34,10 @@ class Base(ABC):
     _downstream_groups: List[tuple[int, int]]
     _downstream_rr: List[int]
     _original_downstreams: List["Base"]
+    _owner_downstreams: List["Base"]
     _distance_groups: List[List["Base"]]
     _distance_rr: List[int]
+    _exec_pos: int
 
     def __init__(self, comp_id: int) -> None:
         """Initialise a component base.
@@ -59,8 +61,10 @@ class Base(ABC):
         self._downstream_groups = []
         self._downstream_rr = []
         self._original_downstreams = []
+        self._owner_downstreams = []
         self._distance_groups = []
         self._distance_rr = []
+        self._exec_pos = -1
 
     def add_link(self, component: "Base", link_type: LinkType):
         """Register a link to another component.
@@ -119,12 +123,14 @@ class Base(ABC):
         self._distance_rr = [0] * len(self._distance_groups)
 
     def add_pull(self, requester: "Base") -> None:
-        """Add a downstream component to the pull-request queue.
+        """Insert a downstream component at the front of the pull-request queue.
+
+        Later requests get higher priority (inserted at front).
 
         Args:
             requester: The component requesting an item pull.
         """
-        self.pull_requests.append(requester)
+        self.pull_requests.insert(0, requester)
 
     @abstractmethod
     def fulfill_requests(self) -> None:

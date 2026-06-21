@@ -1,15 +1,12 @@
 """Splitter unit — distributes items from one input to multiple outputs.
 
 Holds a single-slot buffer and uses distance-prioritized round-robin:
-Convergers get highest priority (shared first group); remaining
-downstreams are grouped by topo_index (distance to sink).
+Convergers always get highest priority group.  Foreign downstreams
+(connected later by others) are served before distance groups.
 Within each group, 2-3-1 RR (increment before select) is used.
 """
 
-from collections import defaultdict
-
 from ....items.item import Item
-from ...._enums import ComponentType
 from ...base import Base
 
 
@@ -25,26 +22,7 @@ class Splitter(Base):
         super().__init__(comp_id)
         self._buffer: Item | None = None
 
-    def _build_distance_groups(self) -> None:
-        """Override: Convergers get the first (highest) priority group.
-        Remaining downstreams are grouped by topo_index (distance to sink),
-        same as the base implementation.
-        """
-        convergers = [d for d in self._original_downstreams
-                      if getattr(d, 'component_type', None) is ComponentType.LOGISTICS_BELT_CONVERGER]
-        normal = [d for d in self._original_downstreams if d not in convergers]
 
-        buckets: dict[int, list[Base]] = defaultdict(list)
-        for d in normal:
-            buckets[d.topo_index].append(d)
-
-        groups: list[list[Base]] = []
-        if convergers:
-            groups.append(convergers)
-        groups.extend(buckets[k] for k in sorted(buckets))
-
-        self._distance_groups = groups
-        self._distance_rr = [0] * len(self._distance_groups)
 
     def can_pull(self) -> bool:
         """Check whether the buffer holds an item.
@@ -55,17 +33,27 @@ class Splitter(Base):
         return self._buffer is not None
 
     def fulfill_requests(self) -> None:
-        """Grant one item to a pull requester via distance-priority 2-3-1 RR.
+        """Grant one item to a pull requester.
 
-        Groups downstreams by topo_index (distance to sink).  Only the
-        nearest group is tried; if all its members reject, the next
-        group is attempted.  Within each group, 2-3-1 RR is used.
+        Foreign downstreams (not in _owner_downstreams) are served first.
+        Then owner downstreams are tried by distance-priority 2-3-1 RR.
         """
         if self._buffer is None:
             self.pull_requests.clear()
             return
         if not self.pull_requests:
             return
+
+        owner_ids: set[int] = {id(d) for d in self._owner_downstreams}
+
+        for i, req in enumerate(self.pull_requests):
+            if id(req) not in owner_ids:
+                self.pull_requests.pop(i)
+                item = self._buffer
+                self._buffer = None
+                if not req._accept_item(item):
+                    self._buffer = item
+                return
 
         for gidx, group in enumerate(self._distance_groups):
             n = len(group)
