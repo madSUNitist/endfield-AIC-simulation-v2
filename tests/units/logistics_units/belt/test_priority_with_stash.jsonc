@@ -1,0 +1,1115 @@
+/*
+
++----+
+ +>>+  s    c
+ |  |  c-l c-r
++----+
+
+*/
+
+{
+    "s, c, c-l, c-r": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}  // c-r
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "s, c, c-r, c-l": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}  // c-l
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, false, true, false, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "s, c-l, c, c-r": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}  // c-r
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "s, c-l, c-r, c": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}  // c
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "s, c-r, c, c-l": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}  // c-l
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, false, true, false, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "s, c-r, c-l, c": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}  // c
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, false, true, false, true, false]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c, s, c-l, c-r": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}  // c-r
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c, s, c-r, c-l": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}  // c-l
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c, c-l, s, c-r": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}  // c-r
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c, c-l, c-r, s": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}  // s
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, false, true, false, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c, c-r, s, c-l": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}  // c-l
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c, c-r, c-l, s": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}  // s
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c-l, s, c, c-r": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}  // c-r
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c-l, s, c-r, c": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}  // c
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c-l, c, s, c-r": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}  // c-r
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c-l, c, c-r, s": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}  // s
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, false, true, false, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c-l, c-r, s, c": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}  // c
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c-l, c-r, c, s": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}  // s
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, false, true, false, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c-r, s, c, c-l": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}  // c-l
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, false, true, false, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c-r, s, c-l, c": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}  // c
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, false, true, false, true, false]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c-r, c, s, c-l": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}  // c-l
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c-r, c, c-l, s": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}  // s
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c-r, c-l, s, c": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}, // s
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}  // c
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, false, true, false, true, false]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }, 
+    "c-r, c-l, c, s": {
+        "mode": "temporal", 
+        "inventory": {}, 
+        "components": [
+            {"type": "protocol_stash", "pos": [11, 2 ], "rot": "ROT_0", "stash_slots": [{"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}, {"type": "ore", "count": 50}]},
+            {"type": "protocol_stash", "pos": [10, 10], "rot": "ROT_0"},
+            {"type": "protocol_stash", "pos": [13, 10], "rot": "ROT_0"},
+            {"type": "conveyor"      , "path": [[14, 13], [16, 13], [16, 1 ], [13, 1 ]], "direction_in": "up", "direction_out": "down"},
+            {"type": "conveyor"      , "path": [[11, 13], [8 , 13], [8 , 1 ], [11, 1 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[12, 5 ], [12, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            {"type": "conveyor"      , "path": [[13, 5 ], [13, 6 ]], "direction_in": "up", "direction_out": "down"}, 
+            // =========================
+            {"type": "conveyor"      , "path": [[13, 8 ], [13, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-r
+            {"type": "conveyor"      , "path": [[12, 8 ], [12, 9 ]], "direction_in": "up", "direction_out": "down"}, // c-l
+            {"type": "converger"     , "pos": [13, 7 ], "rot": "ROT_0"}, // c
+            {"type": "splitter"      , "pos": [12, 7 ], "rot": "ROT_0"}  // s
+        ], 
+        "observe": {
+            "warmup": 2, 
+            "window": 6, 
+            "targets": {
+                "splitter_out": {
+                    "component": "Splitter:0", 
+                    "follow": "downstream.Conveyor", 
+                    "expr": "_slots[0] is not None"
+                }, 
+                "converger_out": {
+                    "component": "Converger:0",
+                    "follow": "downstream.Conveyor",
+                    "expr": "_slots[0] is not None"
+                }
+            }
+        }, 
+        "assertions": [
+            {
+                "target": "observe.splitter_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }, 
+            {
+                "target": "observe.converger_out[-6:]", 
+                "op": "in", 
+                "value": [[false, true, true, true, true, true]]
+            }
+        ]
+    }
+}

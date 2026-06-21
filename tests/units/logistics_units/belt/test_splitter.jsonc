@@ -1,0 +1,76 @@
+{
+    "splitter_line": {
+        "name": "Splitter Line",
+        "mode": "integration",
+        "ticks": 30,
+        "inventory": { "ore": 9999 },
+        "components": [
+            { "pos": [-1, -1], "type": "depot_loader", "rot": "ROT_0", "item": "ore" },
+            { "pos": [ 0,  0], "type": "splitter",     "rot": "ROT_0" },
+            { "path": [[0,1],[0,4]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "path": [[0,5],[0,8]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "pos": [-1,  9], "type": "depot_unloader","rot": "ROT_0" },
+            { "path": [[1,0]], "type": "conveyor", "direction_in": "left", "direction_out": "right" },
+            { "path": [[2,0]], "type": "conveyor", "direction_in": "left", "direction_out": "down" },
+            { "pos": [ 1,  1], "type": "depot_unloader","rot": "ROT_0" }
+        ],
+        "assertions": [
+            { "target": "graph.order.len", "op": "==", "value": 8 },
+            { "target": "components[type=LOGISTICS_BELT_SPLITTER].len", "op": "==", "value": 1 },
+            { "target": "components[type=DEPOT_ACCESS_DEPOT_UNLOADER].len", "op": "==", "value": 2 },
+            { "target": "inventory.ore", "op": "<", "value": 9999 },
+            { "target": "components[type=LOGISTICS_BELT_CONVEYOR].len", "op": "==", "value": 4 },
+            { "target": "components[type=LOGISTICS_BELT_CONVEYOR].all._count", "op": ">", "value": 0, "min_matches": 1 }
+        ]
+    },
+    "priority_output": {
+        "name": "Distance Priority Output",
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": { "ore": 9999 },
+        "components": [
+            { "pos": [ 0, -1], "type": "depot_loader",  "rot": "ROT_0", "item": "ore" },
+            { "path": [[0,0]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "pos": [ 0,  1], "type": "splitter",      "rot": "ROT_0" },
+            { "path": [[0,2],[0,3]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "pos": [-1,  4], "type": "depot_unloader", "rot": "ROT_0" },
+            { "path": [[1,1]], "type": "conveyor", "direction_in": "left", "direction_out": "right" },
+            { "path": [[2,1]], "type": "conveyor", "direction_in": "left", "direction_out": "down" },
+            { "path": [[2,2],[2,4]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "pos": [ 1,  5], "type": "depot_unloader", "rot": "ROT_0" }
+        ],
+        "assertions": [
+            { "target": "components[type=LOGISTICS_BELT_SPLITTER].len", "op": "==", "value": 1 },
+            { "target": "components[type=LOGISTICS_BELT_CONVEYOR].all._count", "op": "==", "value": 0, "min_matches": 3 }
+        ]
+    },
+    "splitter_rr_231": {
+        "name": "Splitter RR 231",
+        "mode": "unit",
+        "setup": {
+            "instances": [
+                { "id": 0, "class": "Splitter" },
+                { "id": 1, "class": "MockSink" },
+                { "id": 2, "class": "MockSink" },
+                { "id": 3, "class": "MockSink" }
+            ],
+            "wiring": {
+                "0.downstreams": [1, 2, 3],
+                "0._owner_downstreams": [1, 2, 3]
+            },
+            "finalize": [0]
+        },
+        "actions": [
+            { "repeat": 6, "steps": [
+                { "set": "0._buffer", "item": "ore" },
+                { "set": "0.pull_requests", "refs": [1, 2, 3] },
+                { "call": "0.fulfill_requests" }
+            ]}
+        ],
+        "assertions": [
+            { "target": "1.received", "op": "==", "value": [1, 1] },
+            { "target": "2.received", "op": "==", "value": [2, 2] },
+            { "target": "3.received", "op": "==", "value": [3, 3] }
+        ]
+    }
+}

@@ -1,0 +1,50 @@
+{
+    "belt_line": {
+        "name": "Belt Line",
+        "mode": "integration",
+        "ticks": 6,
+        "inventory": { "ore": 9999 },
+        "components": [
+            { "pos": [-1, 0], "type": "depot_loader",  "rot": "ROT_0", "item": "ore" },
+            { "path": [[0,1],[0,4]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "pos": [-1, 5], "type": "depot_unloader", "rot": "ROT_0" }
+        ],
+        "assertions": [
+            { "target": "graph.order.len", "op": "==", "value": 3 },
+            { "target": "components[type=LOGISTICS_BELT_CONVEYOR].len", "op": "==", "value": 1 },
+            { "target": "components[type=LOGISTICS_BELT_CONVEYOR][0]._count", "op": ">", "value": 0 }
+        ]
+    },
+    "belt_accumulate": {
+        "name": "Short Belt",
+        "mode": "integration",
+        "ticks": 10,
+        "inventory": { "ore": 5000 },
+        "components": [
+            { "pos": [-1, 0], "type": "depot_loader",  "rot": "ROT_0", "item": "ore" },
+            { "path": [[0,1],[0,3]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "pos": [-1, 4], "type": "depot_unloader", "rot": "ROT_0" }
+        ],
+        "assertions": [
+            { "target": "graph.order.len", "op": "==", "value": 3 },
+            { "target": "components[type=LOGISTICS_BELT_CONVEYOR].len", "op": "==", "value": 1 },
+            { "target": "components[type=LOGISTICS_BELT_CONVEYOR][0]._count", "op": ">", "value": 0 }
+        ]
+    },
+    "loader_unloader": {
+        "name": "Loader Belt Unloader",
+        "mode": "integration",
+        "ticks": 20,
+        "inventory": { "ore": 9999 },
+        "components": [
+            { "pos": [-1, 0], "type": "depot_loader",  "rot": "ROT_0", "item": "ore" },
+            { "path": [[0,1],[0,4]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "pos": [-1, 5], "type": "depot_unloader", "rot": "ROT_0" }
+        ],
+        "assertions": [
+            { "target": "graph.order.len", "op": "==", "value": 3 },
+            { "target": "components[type=LOGISTICS_BELT_CONVEYOR].len", "op": "==", "value": 1 },
+            { "target": "components[type=LOGISTICS_BELT_CONVEYOR][0]._count", "op": ">", "value": 0 }
+        ]
+    }
+}

@@ -1,0 +1,48 @@
+{
+    "A": {
+        "name": "A: Converger+Splitter both full-speed",
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": { "ore": 9999, "copper": 9999 },
+        "components": [
+            { "pos": [-2, -3], "type": "depot_loader", "rot": "ROT_0", "item": "ore" },
+            { "path": [[-1,-2],[-1,-1],[-1,0],[0,0]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "pos": [ 0,  1], "type": "splitter",       "rot": "ROT_0" },
+            { "pos": [ 1,  1], "type": "converger",      "rot": "ROT_0" },
+            { "pos": [ 1, -4], "type": "depot_loader",  "rot": "ROT_0", "item": "copper" },
+            { "path": [[2,-3],[2,-2],[2,-1],[2,0],[1,0]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "path": [[1,2],[1,3],[1,4]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "pos": [ 0,  5], "type": "depot_unloader", "rot": "ROT_0" }
+        ],
+        "assertions": [
+            { "target": "inventory.ore", "op": "<", "value": 9999 },
+            { "target": "inventory.copper", "op": ">=", "value": 9989 },
+            { "target": "inventory.copper", "op": "<", "value": 9999 }
+        ]
+    },
+    "B": {
+        "name": "B: Converger full-speed, Splitter half-speed (split to two paths)",
+        "mode": "integration",
+        "ticks": 60,
+        "inventory": { "ore": 9999, "copper": 9999 },
+        "components": [
+            { "pos": [-2, -3], "type": "depot_loader",  "rot": "ROT_0", "item": "ore" },
+            { "path": [[-1,-2],[-1,-1],[-1,0],[0,0]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "pos": [ 0,  1], "type": "splitter",       "rot": "ROT_0" },
+            { "pos": [ 1,  1], "type": "converger",      "rot": "ROT_0" },
+            { "pos": [ 1, -4], "type": "depot_loader",  "rot": "ROT_0", "item": "copper" },
+            { "path": [[2,-3],[2,-2],[2,-1],[2,0],[1,0]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "path": [[1,2],[1,3],[1,4]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "pos": [ 0,  5], "type": "depot_unloader", "rot": "ROT_0" },
+            { "path": [[0,2],[-1,2],[-1,3]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "path": [[-1,4],[-2,4],[-2,5]], "type": "conveyor", "direction_in": "up", "direction_out": "down" },
+            { "pos": [-3,  6], "type": "depot_unloader", "rot": "ROT_0" }
+        ],
+        "assertions": [
+            { "target": "inventory.ore", "op": "<", "value": 9999 },
+            { "target": "inventory.copper", "op": "<", "value": 9999 },
+            { "target": "components[type=LOGISTICS_BELT_SPLITTER].len", "op": "==", "value": 1 },
+            { "target": "Splitter:0._original_downstreams.len", "op": "==", "value": 2 }
+        ]
+    }
+}

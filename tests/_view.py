@@ -56,6 +56,5 @@ def render_stash(comp: ProtocolStash, mode: str) -> str:
 
 
 def load_test_case(path: Path) -> dict:
-    import json
-    with path.open(encoding="utf-8") as f:
-        return json.load(f)
+    import json5
+    return json5.loads(path.read_text("utf-8"))

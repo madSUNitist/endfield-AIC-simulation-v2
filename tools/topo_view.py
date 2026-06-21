@@ -356,7 +356,10 @@ def show_graphviz(fac: Factory, output: Path, fmt: str, *,
         _add_order_chain_overlay(dot, fac)
 
     try:
-        out_path = dot.render(str(output), cleanup=True)
+        output_stem = Path(str(output))
+        if output_stem.suffix.lstrip(".") == fmt:
+            output_stem = output_stem.with_suffix("")
+        out_path = dot.render(str(output_stem), cleanup=True)
         print(f"Graphviz saved: {out_path}")
     except Exception:
         logger.exception("Graphviz render failed for %s", output)

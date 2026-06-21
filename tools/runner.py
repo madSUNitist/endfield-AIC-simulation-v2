@@ -1,8 +1,8 @@
 """Run conveyor simulation from JSON test cases.
 
 Usage:
-    uv run python tools/runner.py tests/test_cases/belt_line.json
-    uv run python tools/runner.py tests/test_cases/belt_line.json --render binary
+    uv run python tools/runner.py tests/units/logistics_units/belt/test_conveyor.json
+    uv run python tools/runner.py tests/units/logistics_units/belt/test_conveyor.json --key belt_line
     uv run python tools/runner.py --all --render type
 """
 
@@ -97,19 +97,18 @@ def _report_unloaders(fac: Factory) -> None:
             print(f"  unloader @({coord.x},{coord.y})")
 
 
-def run_single(path: Path, render: str | None = None) -> None:
-    """Load and run a single JSON test case.
+def run_case(cfg: dict, name: str, render: str | None = None) -> None:
+    """Run a single test case config.
 
     Args:
-        path: Path to the JSON test case file.
+        cfg: Test case configuration dict.
+        name: Display name for the case.
         render: Optional render mode override ("type", "binary", etc.).
     """
-    cfg = load_test_case(path)
     if render:
         cfg["render"] = render
     mode = cfg.get("render", RENDER_MODES[0])
     fac = Factory(cfg)
-    name = cfg.get("name", path.stem)
 
     convs, cvgs, splts, stshs = _collect_components(fac)
 
@@ -123,44 +122,64 @@ def run_single(path: Path, render: str | None = None) -> None:
     _report_unloaders(fac)
 
 
-def run_all(test_dir: Path, render: str | None = None) -> None:
-    """Run all JSON test cases in a directory.
+def run_file(path: Path, render: str | None = None, key: str | None = None) -> None:
+    """Load a multi-case JSON file and run cases.
 
     Args:
-        test_dir: Directory containing ``*.json`` test case files.
+        path: Path to a JSON file containing keyed test cases.
+        render: Optional render mode override.
+        key: If given, run only this case; otherwise run all cases in the file.
+    """
+    data = load_test_case(path)
+    if key:
+        cfg = data[key]
+        run_case(cfg, cfg.get("name", key), render)
+    else:
+        for k, cfg in data.items():
+            run_case(cfg, cfg.get("name", k), render)
+            print()
+
+
+def run_all(render: str | None = None) -> None:
+    """Run all JSON test cases under tests/.
+
+    Args:
         render: Optional render mode override.
     """
-    for j in sorted(test_dir.glob("*.json")):
-        run_single(j, render)
-        print()
+    test_root = Path(__file__).parent.parent / "tests"
+    for j in sorted(test_root.rglob("test_*.jsonc")):
+        run_file(j, render)
 
 
 def main() -> None:
     """Parse command-line arguments and run test cases."""
     args = sys.argv[1:]
     render: str | None = None
+    key: str | None = None
     paths: list[str] = []
+    run_all_flag = False
 
     i = 0
     while i < len(args):
         if args[i] == "--render" and i + 1 < len(args):
             render = args[i + 1]
             i += 2
+        elif args[i] == "--key" and i + 1 < len(args):
+            key = args[i + 1]
+            i += 2
         elif args[i] == "--all":
-            paths = []
-            break
+            run_all_flag = True
+            i += 1
         else:
             paths.append(args[i])
             i += 1
 
-    test_dir = Path(__file__).parent.parent / "tests" / "test_cases"
-
-    if not paths:
-        run_all(test_dir, render)
+    if run_all_flag:
+        run_all(render)
         return
 
     for p in paths:
-        run_single(Path(p), render)
+        run_file(Path(p), render, key)
 
 
 if __name__ == "__main__":

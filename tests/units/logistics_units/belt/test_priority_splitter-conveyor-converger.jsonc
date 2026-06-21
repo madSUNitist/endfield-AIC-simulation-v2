@@ -1,0 +1,563 @@
+/*
+
+A   B   C
+|   |   |    u
++>> + <<+  l c r
+    |
+    S
+
+*/
+
+{
+    "u, l, c, r": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"}   // r
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'A' for x in _)"}
+        ]
+    },
+
+    "u, l, r, c": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"}   // c
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'A' for x in _)"}
+        ]
+    },
+
+    "u, c, l, r": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"}   // r
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'B' for x in _)"}
+        ]
+    },
+
+    "u, c, r, l": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"}   // l
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'B' for x in _)"}
+        ]
+    },
+
+    "u, r, c, l": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"}   // l
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'B' for x in _)"}
+        ]
+    },
+
+    "u, r, l, c": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"}   // c
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'A' for x in _)"}
+        ]
+    },
+
+    "l, u, c, r": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"}   // r
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'A' for x in _)"}
+        ]
+    },
+
+    "l, u, r, c": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"}   // c
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'A' for x in _)"}
+        ]
+    },
+
+    "l, c, u, r": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"}   // r
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'A' for x in _)"}
+        ]
+    },
+
+    "l, c, r, u": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"}   // u
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'A' for x in _)"}
+        ]
+    },
+
+    "l, r, u, c": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"}   // c
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'A' for x in _)"}
+        ]
+    },
+
+    "l, r, c, u": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"}   // u
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'A' for x in _)"}
+        ]
+    },
+
+    "r, u, l, c": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"}   // c
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'A' for x in _)"}
+        ]
+    },
+
+    "r, u, c, l": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"}   // l
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'B' for x in _)"}
+        ]
+    },
+
+    "r, c, u, l": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"}   // l
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'C' for x in _)"}
+        ]
+    },
+
+    "r, c, l, u": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"}   // u
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'C' for x in _)"}
+        ]
+    },
+
+    "r, l, u, c": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"}   // c
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'A' for x in _)"}
+        ]
+    },
+
+    "r, l, c, u": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"}   // u
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'A' for x in _)"}
+        ]
+    },
+
+    "c, l, u, r": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"}   // r
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'A' for x in _)"}
+        ]
+    },
+
+    "c, l, r, u": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"}   // u
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'A' for x in _)"}
+        ]
+    },
+
+    "c, u, l, r": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"}   // r
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'B' for x in _)"}
+        ]
+    },
+
+    "c, u, r, l": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"}   // l
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'B' for x in _)"}
+        ]
+    },
+
+    "c, r, u, l": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"},  // u
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"}   // l
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'C' for x in _)"}
+        ]
+    },
+
+    "c, r, l, u": {
+        "mode": "integration",
+        "ticks": 40,
+        "inventory": {"A": 9999, "B": 9999, "C": 9999},
+        "components": [
+            {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
+            {"type": "depot_loader"  , "pos": [6 , 2], "rot": "ROT_0", "item": "B"},
+            {"type": "depot_loader"  , "pos": [9 , 2], "rot": "ROT_0", "item": "C"},
+            {"type": "conveyor"      , "path": [[4, 3], [4, 5], [5, 5]], "direction_in": "up", "direction_out": "right"},
+            {"type": "conveyor"      , "path": [[10, 3], [10, 5], [9, 5]], "direction_in": "up", "direction_out": "left"},
+            {"type": "conveyor"      , "path": [[7, 6], [7, 7]], "direction_in": "up", "direction_out": "down"},
+            {"type": "depot_unloader", "pos": [6 , 8], "rot": "ROT_0"},
+            // =========================
+            {"type": "converger"     , "pos": [7 , 5], "rot": "ROT_0"},  // c
+            {"type": "splitter"      , "pos": [8 , 5], "rot": "ROT_1"},  // r
+            {"type": "splitter"      , "pos": [6 , 5], "rot": "ROT_3"},  // l
+            {"type": "conveyor"      , "path": [[7, 3], [7, 4]], "direction_in": "up", "direction_out": "down"}   // u
+        ],
+        "assertions": [
+            {"target": "Conveyor:2._slots", "op": "expr", "value": "all(x.type == 'C' for x in _)"}
+        ]
+    }
+}
