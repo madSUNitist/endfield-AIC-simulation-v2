@@ -27,7 +27,7 @@
     "stash_basic_flow": {
         "name": "Stash Basic Flow",
         "mode": "integration",
-        "ticks": 11,
+        "ticks": 22
         "inventory": { "ore": 9999 },
         "components": [
             { "pos": [ 0, -1], "type": "depot_loader",    "rot": "ROT_0", "item": "ore" },
@@ -43,7 +43,7 @@
     "stash_can_pull": {
         "name": "Stash Can Pull After Tick",
         "mode": "integration",
-        "ticks": 1,
+        "ticks": 2
         "inventory": { "ore": 9999 },
         "components": [
             { "pos": [ 0, -1], "type": "depot_loader",    "rot": "ROT_0", "item": "ore" },
@@ -58,7 +58,7 @@
     "stash_request_upstream_all": {
         "name": "Stash Request Upstream All",
         "mode": "integration",
-        "ticks": 1,
+        "ticks": 2
         "inventory": { "ore": 9999 },
         "components": [
             { "pos": [ 0, -1], "type": "depot_loader",    "rot": "ROT_0", "item": "ore" },
@@ -75,7 +75,7 @@
     "stash_two_inputs_block": {
         "name": "Stash Two Inputs Block",
         "mode": "integration",
-        "ticks": 400,
+        "ticks": 800
         "inventory": { "ore": 9999, "copper": 9999 },
         "components": [
             { "pos": [-1, -1], "type": "depot_loader",  "rot": "ROT_0", "item": "ore" },
@@ -249,3 +249,4 @@
         ]
     }
 }
+

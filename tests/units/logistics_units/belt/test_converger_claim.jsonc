@@ -2,7 +2,7 @@
     "A": {
         "name": "A: Converger+Splitter both full-speed",
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80
         "inventory": { "ore": 9999, "copper": 9999 },
         "components": [
             { "pos": [-2, -3], "type": "depot_loader", "rot": "ROT_0", "item": "ore" },
@@ -23,7 +23,7 @@
     "B": {
         "name": "B: Converger full-speed, Splitter half-speed (split to two paths)",
         "mode": "integration",
-        "ticks": 60,
+        "ticks": 120
         "inventory": { "ore": 9999, "copper": 9999 },
         "components": [
             { "pos": [-2, -3], "type": "depot_loader",  "rot": "ROT_0", "item": "ore" },
@@ -46,3 +46,4 @@
         ]
     }
 }
+

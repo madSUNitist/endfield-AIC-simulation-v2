@@ -2,7 +2,7 @@
     "belt_line": {
         "name": "Belt Line",
         "mode": "integration",
-        "ticks": 6,
+        "ticks": 12
         "inventory": { "ore": 9999 },
         "components": [
             { "pos": [-1, 0], "type": "depot_loader",  "rot": "ROT_0", "item": "ore" },
@@ -18,7 +18,7 @@
     "belt_accumulate": {
         "name": "Short Belt",
         "mode": "integration",
-        "ticks": 10,
+        "ticks": 20
         "inventory": { "ore": 5000 },
         "components": [
             { "pos": [-1, 0], "type": "depot_loader",  "rot": "ROT_0", "item": "ore" },
@@ -34,7 +34,7 @@
     "loader_unloader": {
         "name": "Loader Belt Unloader",
         "mode": "integration",
-        "ticks": 20,
+        "ticks": 40
         "inventory": { "ore": 9999 },
         "components": [
             { "pos": [-1, 0], "type": "depot_loader",  "rot": "ROT_0", "item": "ore" },
@@ -48,3 +48,4 @@
         ]
     }
 }
+

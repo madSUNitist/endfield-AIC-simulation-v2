@@ -10,11 +10,14 @@ Index length-1 is the head where new items from upstream are written.
 tracking the next available write position backward from the head.
 """
 
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, TYPE_CHECKING
 
 from ...base import Base
 from ...._enums import LinkType
 from ....items.item import Item
+
+if TYPE_CHECKING:
+    from ....engine import Outbox
 
 
 class Conveyor(Base):
@@ -36,6 +39,7 @@ class Conveyor(Base):
         self._slots: List[Optional[Item]] = [None] * length
         self._count = 0
         self._accept_pos: int = length - 1
+        self._shift_counter: int = 0
 
     @property
     def _length(self) -> int:
@@ -128,3 +132,15 @@ class Conveyor(Base):
             List of length *length* where index 0 is the tail.
         """
         return list(self._slots)
+
+    def _run_p1(self, subtick: int, outbox: "Outbox") -> None:
+        self.fulfill_requests()
+        self._shift_counter += 1
+        if self._shift_counter % 4 == 0:
+            self.self_update()
+        if self._slots[self._length - 1] is None and self.upstreams:
+            if self.upstreams[0].can_pull():
+                outbox.add_pull(self.upstreams[0])
+
+    def _run_p2(self, subtick: int, outbox: "Outbox") -> None:
+        pass

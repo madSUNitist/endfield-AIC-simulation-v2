@@ -15,12 +15,15 @@ group first; within each group, 1-2-3 connection-order RR is used.
 Other paths stay idle until the shorter path is blocked.
 """
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from ..base import Base
 from ..._id_gen import IDGen
 from ...items.inventory import Inventory
 from ...items.item import Item
+
+if TYPE_CHECKING:
+    from ...engine import Outbox
 
 
 class ProtocolStash(Base):
@@ -176,3 +179,15 @@ class ProtocolStash(Base):
             self._inv.push(item)
         else:
             self._buffer = item
+
+    def _run_p1(self, subtick: int, outbox: "Outbox") -> None:
+        self.fulfill_requests()
+        self.self_update()
+        if self._buffer is not None and self._inv.is_full():
+            return
+        for up in self.upstreams:
+            if up.can_pull():
+                outbox.add_pull(up)
+
+    def _run_p2(self, subtick: int, outbox: "Outbox") -> None:
+        self.phase2()

@@ -6,11 +6,14 @@ pull system for item transfer.
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from .._enums import LinkType, ComponentType
 from ..items.item import Item
 from ..utils import Vec
+
+if TYPE_CHECKING:
+    from ..engine import Outbox
 
 
 class Base(ABC):
@@ -39,6 +42,9 @@ class Base(ABC):
     _distance_rr: List[int]
     _exec_pos: int
 
+    _phase: int
+    _active: bool
+
     def __init__(self, comp_id: int) -> None:
         """Initialise a component base.
 
@@ -65,6 +71,9 @@ class Base(ABC):
         self._distance_groups = []
         self._distance_rr = []
         self._exec_pos = -1
+
+        self._phase = 0
+        self._active = False
 
     def add_link(self, component: "Base", link_type: LinkType):
         """Register a link to another component.
@@ -174,6 +183,29 @@ class Base(ABC):
             True if fulfill_requests() would be able to supply an item.
         """
         return False
+
+    def step(self, subtick: int, outbox: "Outbox") -> None:
+        """Execute the component's current phase and advance the FSM.
+
+        Args:
+            subtick: Global monotonic subtick counter.
+            outbox: Write buffer for cross-component pull requests.
+        """
+        if self._phase == 0:
+            self._run_p1(subtick, outbox)
+        else:
+            self._run_p2(subtick, outbox)
+        self._phase = 1 - self._phase
+
+    def _run_p1(self, subtick: int, outbox: "Outbox") -> None:
+        """Phase 1: deliver, advance, request (overridden per component)."""
+        raise NotImplementedError(
+            f"{type(self).__name__}._run_p1"
+        )
+
+    def _run_p2(self, subtick: int, outbox: "Outbox") -> None:
+        """Phase 2: zero-tick passthrough (overridden by ProtocolStash)."""
+        self.phase2()
 
     @abstractmethod
     def _accept_item(self, item: Item) -> bool:

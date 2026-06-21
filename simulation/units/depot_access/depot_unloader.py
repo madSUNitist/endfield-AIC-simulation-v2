@@ -1,9 +1,14 @@
 """Unloader that accepts items and places them into an inventory."""
 
+from typing import TYPE_CHECKING
+
 from ..base import Base
 from ..._id_gen import IDGen
 from ...items.inventory import Inventory
 from ...items.item import Item
+
+if TYPE_CHECKING:
+    from ...engine import Outbox
 
 
 class DepotUnloader(Base):
@@ -49,3 +54,12 @@ class DepotUnloader(Base):
             True if the item was accepted, False if the inventory is full.
         """
         return self._inv.push(item)
+
+    def _run_p1(self, subtick: int, outbox: "Outbox") -> None:
+        self.fulfill_requests()
+        self.self_update()
+        if self.upstreams and self.upstreams[0].can_pull():
+            outbox.add_pull(self.upstreams[0])
+
+    def _run_p2(self, subtick: int, outbox: "Outbox") -> None:
+        pass

@@ -5,8 +5,13 @@ over shared upstreams (out_degree>1).  Among same-priority upstreams,
 picks the first in connection order (upstreams list) that has items.
 """
 
+from typing import TYPE_CHECKING
+
 from ....items.item import Item
 from ...base import Base
+
+if TYPE_CHECKING:
+    from ....engine import Outbox
 
 
 class Converger(Base):
@@ -78,3 +83,24 @@ class Converger(Base):
             return False
         self._buffer = item
         return True
+
+    def _run_p1(self, subtick: int, outbox: "Outbox") -> None:
+        self.fulfill_requests()
+        self.self_update()
+        if self._buffer is not None:
+            return
+        for up in self.upstreams:
+            outbox.remove_pull(up)
+        has_shared = any(up.out_degree > 1 and up.can_pull() for up in self.upstreams)
+        if has_shared:
+            for up in self.upstreams:
+                if up.can_pull():
+                    outbox.add_pull(up)
+        else:
+            for up in self.upstreams:
+                if up.can_pull():
+                    outbox.add_pull(up)
+                    return
+
+    def _run_p2(self, subtick: int, outbox: "Outbox") -> None:
+        pass

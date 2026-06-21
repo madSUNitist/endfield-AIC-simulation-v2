@@ -11,7 +11,7 @@ A   B   C
 {
     "u, l, c, r": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -34,7 +34,7 @@ A   B   C
 
     "u, l, r, c": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -57,7 +57,7 @@ A   B   C
 
     "u, c, l, r": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -80,7 +80,7 @@ A   B   C
 
     "u, c, r, l": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -103,7 +103,7 @@ A   B   C
 
     "u, r, c, l": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -126,7 +126,7 @@ A   B   C
 
     "u, r, l, c": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -149,7 +149,7 @@ A   B   C
 
     "l, u, c, r": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -172,7 +172,7 @@ A   B   C
 
     "l, u, r, c": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -195,7 +195,7 @@ A   B   C
 
     "l, c, u, r": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -218,7 +218,7 @@ A   B   C
 
     "l, c, r, u": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -241,7 +241,7 @@ A   B   C
 
     "l, r, u, c": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -264,7 +264,7 @@ A   B   C
 
     "l, r, c, u": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -287,7 +287,7 @@ A   B   C
 
     "r, u, l, c": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -310,7 +310,7 @@ A   B   C
 
     "r, u, c, l": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -333,7 +333,7 @@ A   B   C
 
     "r, c, u, l": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -356,7 +356,7 @@ A   B   C
 
     "r, c, l, u": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -379,7 +379,7 @@ A   B   C
 
     "r, l, u, c": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -402,7 +402,7 @@ A   B   C
 
     "r, l, c, u": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -425,7 +425,7 @@ A   B   C
 
     "c, l, u, r": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -448,7 +448,7 @@ A   B   C
 
     "c, l, r, u": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -471,7 +471,7 @@ A   B   C
 
     "c, u, l, r": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -494,7 +494,7 @@ A   B   C
 
     "c, u, r, l": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -517,7 +517,7 @@ A   B   C
 
     "c, r, u, l": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -540,7 +540,7 @@ A   B   C
 
     "c, r, l, u": {
         "mode": "integration",
-        "ticks": 40,
+        "ticks": 80,
         "inventory": {"A": 9999, "B": 9999, "C": 9999},
         "components": [
             {"type": "depot_loader"  , "pos": [3 , 2], "rot": "ROT_0", "item": "A"},
@@ -561,3 +561,4 @@ A   B   C
         ]
     }
 }
+

@@ -6,8 +6,13 @@ Convergers always get highest priority group.  Foreign downstreams
 Within each group, 2-3-1 RR (increment before select) is used.
 """
 
+from typing import TYPE_CHECKING
+
 from ....items.item import Item
 from ...base import Base
+
+if TYPE_CHECKING:
+    from ....engine import Outbox
 
 
 class Splitter(Base):
@@ -92,3 +97,14 @@ class Splitter(Base):
             return False
         self._buffer = item
         return True
+
+    def _run_p1(self, subtick: int, outbox: "Outbox") -> None:
+        self.fulfill_requests()
+        self.self_update()
+        if self._buffer is not None or not self.upstreams:
+            return
+        if self.upstreams[0].can_pull():
+            outbox.add_pull(self.upstreams[0])
+
+    def _run_p2(self, subtick: int, outbox: "Outbox") -> None:
+        pass

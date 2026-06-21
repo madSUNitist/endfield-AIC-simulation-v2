@@ -2,12 +2,15 @@
 them downstream on request.
 """
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from ..base import Base
 from ..._id_gen import IDGen
 from ...items.inventory import Inventory
 from ...items.item import Item
+
+if TYPE_CHECKING:
+    from ...engine import Outbox
 
 
 class DepotLoader(Base):
@@ -50,3 +53,10 @@ class DepotLoader(Base):
     def _accept_item(self, item: object) -> bool:
         """Depot loaders never accept incoming items."""
         return False
+
+    def _run_p1(self, subtick: int, outbox: "Outbox") -> None:
+        self.fulfill_requests()
+        self.self_update()
+
+    def _run_p2(self, subtick: int, outbox: "Outbox") -> None:
+        pass
