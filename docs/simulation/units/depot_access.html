@@ -53,17 +53,25 @@
                     <h1 class="modulename">
 <a href="./../../simulation.html">simulation</a><wbr>.<a href="./../units.html">units</a><wbr>.depot_access    </h1>
 
-                        <div class="docstring"><p>Depot-access unit implementations — loader, unloader, protocol stash.</p>
+                        <div class="docstring"><p>Depot-access unit implementations — loader, unloader, protocol stash,
+conduit inlets/outlets, and fluid tank stubs.</p>
 </div>
 
                         <input id="mod-depot_access-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
 
                         <label class="view-source-button" for="mod-depot_access-view-source"><span>View Source</span></label>
 
-                        <div class="pdoc-code codehilite"><pre><span></span><span id="L-1"><a href="#L-1"><span class="linenos">1</span></a><span class="sd">&quot;&quot;&quot;Depot-access unit implementations — loader, unloader, protocol stash.&quot;&quot;&quot;</span>
-</span><span id="L-2"><a href="#L-2"><span class="linenos">2</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.depot_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">DepotLoader</span>
-</span><span id="L-3"><a href="#L-3"><span class="linenos">3</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.depot_unloader</span><span class="w"> </span><span class="kn">import</span> <span class="n">DepotUnloader</span>
-</span><span id="L-4"><a href="#L-4"><span class="linenos">4</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.protocol_stash</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProtocolStash</span>
+                        <div class="pdoc-code codehilite"><pre><span></span><span id="L-1"><a href="#L-1"><span class="linenos"> 1</span></a><span class="sd">&quot;&quot;&quot;Depot-access unit implementations — loader, unloader, protocol stash,</span>
+</span><span id="L-2"><a href="#L-2"><span class="linenos"> 2</span></a><span class="sd">conduit inlets/outlets, and fluid tank stubs.&quot;&quot;&quot;</span>
+</span><span id="L-3"><a href="#L-3"><span class="linenos"> 3</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.depot_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">DepotLoader</span>
+</span><span id="L-4"><a href="#L-4"><span class="linenos"> 4</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.depot_unloader</span><span class="w"> </span><span class="kn">import</span> <span class="n">DepotUnloader</span>
+</span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.protocol_stash</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProtocolStash</span>
+</span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a>
+</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.conduit_inlet</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConduitInlet</span>
+</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.conduit_inlet_manifold</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConduitInletManifold</span>
+</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.conduit_outlet</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConduitOutlet</span>
+</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.conduit_outlet_manifold</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConduitOutletManifold</span>
+</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">.fluid_tank</span><span class="w"> </span><span class="kn">import</span> <span class="n">FluidTank</span>
 </span></pre></div>
 
 

@@ -60,7 +60,7 @@
 
                         <div class="docstring"><p>Item-control port — interface point for inserting or extracting items.</p>
 
-<p>Not yet implemented; all methods are stubs.</p>
+<p>Not yet implemented.</p>
 </div>
 
                         <input id="mod-item_control_port-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
@@ -69,36 +69,24 @@
 
                         <div class="pdoc-code codehilite"><pre><span></span><span id="L-1"><a href="#L-1"><span class="linenos"> 1</span></a><span class="sd">&quot;&quot;&quot;Item-control port — interface point for inserting or extracting items.</span>
 </span><span id="L-2"><a href="#L-2"><span class="linenos"> 2</span></a>
-</span><span id="L-3"><a href="#L-3"><span class="linenos"> 3</span></a><span class="sd">Not yet implemented; all methods are stubs.</span>
+</span><span id="L-3"><a href="#L-3"><span class="linenos"> 3</span></a><span class="sd">Not yet implemented.</span>
 </span><span id="L-4"><a href="#L-4"><span class="linenos"> 4</span></a><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a>
 </span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">...base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Base</span>
-</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a>
+</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">....items.item</span><span class="w"> </span><span class="kn">import</span> <span class="n">Item</span>
 </span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a>
-</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a><span class="k">class</span><span class="w"> </span><span class="nc">ItemControlPort</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
-</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Placeholder item control port (manual / automation I/O).</span>
-</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a>
-</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a><span class="sd">    Currently all methods are stubs that do nothing or reject items.</span>
-</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a>
-</span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">fulfill_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Stub — no-op. Placeholder for future downstream pull distribution.&quot;&quot;&quot;</span>
-</span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a>        <span class="o">...</span>
+</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a>
+</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a><span class="k">class</span><span class="w"> </span><span class="nc">ItemControlPort</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
+</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Placeholder item control port (manual / automation I/O).&quot;&quot;&quot;</span>
+</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a>
+</span><span id="L-13"><a href="#L-13"><span class="linenos">13</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">fulfill_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-14"><a href="#L-14"><span class="linenos">14</span></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;ItemControlPort.fulfill_requests&quot;</span><span class="p">)</span>
+</span><span id="L-15"><a href="#L-15"><span class="linenos">15</span></a>
+</span><span id="L-16"><a href="#L-16"><span class="linenos">16</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">request_upstream</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="L-17"><a href="#L-17"><span class="linenos">17</span></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;ItemControlPort.request_upstream&quot;</span><span class="p">)</span>
 </span><span id="L-18"><a href="#L-18"><span class="linenos">18</span></a>
-</span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">request_upstream</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="L-20"><a href="#L-20"><span class="linenos">20</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Stub — no-op. Placeholder for future upstream pull requests.&quot;&quot;&quot;</span>
-</span><span id="L-21"><a href="#L-21"><span class="linenos">21</span></a>        <span class="o">...</span>
-</span><span id="L-22"><a href="#L-22"><span class="linenos">22</span></a>
-</span><span id="L-23"><a href="#L-23"><span class="linenos">23</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_accept_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</span><span id="L-24"><a href="#L-24"><span class="linenos">24</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Stub — always rejects items.</span>
-</span><span id="L-25"><a href="#L-25"><span class="linenos">25</span></a>
-</span><span id="L-26"><a href="#L-26"><span class="linenos">26</span></a><span class="sd">        Args:</span>
-</span><span id="L-27"><a href="#L-27"><span class="linenos">27</span></a><span class="sd">            item: The item to accept.</span>
-</span><span id="L-28"><a href="#L-28"><span class="linenos">28</span></a>
-</span><span id="L-29"><a href="#L-29"><span class="linenos">29</span></a><span class="sd">        Returns:</span>
-</span><span id="L-30"><a href="#L-30"><span class="linenos">30</span></a><span class="sd">            False (item is always rejected).</span>
-</span><span id="L-31"><a href="#L-31"><span class="linenos">31</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="L-32"><a href="#L-32"><span class="linenos">32</span></a>        <span class="k">return</span> <span class="kc">False</span>
+</span><span id="L-19"><a href="#L-19"><span class="linenos">19</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_accept_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">Item</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="L-20"><a href="#L-20"><span class="linenos">20</span></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;ItemControlPort._accept_item&quot;</span><span class="p">)</span>
 </span></pre></div>
 
 
@@ -114,36 +102,21 @@
 
     </div>
     <a class="headerlink" href="#ItemControlPort"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="ItemControlPort-10"><a href="#ItemControlPort-10"><span class="linenos">10</span></a><span class="k">class</span><span class="w"> </span><span class="nc">ItemControlPort</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
-</span><span id="ItemControlPort-11"><a href="#ItemControlPort-11"><span class="linenos">11</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Placeholder item control port (manual / automation I/O).</span>
-</span><span id="ItemControlPort-12"><a href="#ItemControlPort-12"><span class="linenos">12</span></a>
-</span><span id="ItemControlPort-13"><a href="#ItemControlPort-13"><span class="linenos">13</span></a><span class="sd">    Currently all methods are stubs that do nothing or reject items.</span>
-</span><span id="ItemControlPort-14"><a href="#ItemControlPort-14"><span class="linenos">14</span></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="ItemControlPort-15"><a href="#ItemControlPort-15"><span class="linenos">15</span></a>
-</span><span id="ItemControlPort-16"><a href="#ItemControlPort-16"><span class="linenos">16</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">fulfill_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="ItemControlPort-17"><a href="#ItemControlPort-17"><span class="linenos">17</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Stub — no-op. Placeholder for future downstream pull distribution.&quot;&quot;&quot;</span>
-</span><span id="ItemControlPort-18"><a href="#ItemControlPort-18"><span class="linenos">18</span></a>        <span class="o">...</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="ItemControlPort-11"><a href="#ItemControlPort-11"><span class="linenos">11</span></a><span class="k">class</span><span class="w"> </span><span class="nc">ItemControlPort</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
+</span><span id="ItemControlPort-12"><a href="#ItemControlPort-12"><span class="linenos">12</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Placeholder item control port (manual / automation I/O).&quot;&quot;&quot;</span>
+</span><span id="ItemControlPort-13"><a href="#ItemControlPort-13"><span class="linenos">13</span></a>
+</span><span id="ItemControlPort-14"><a href="#ItemControlPort-14"><span class="linenos">14</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">fulfill_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="ItemControlPort-15"><a href="#ItemControlPort-15"><span class="linenos">15</span></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;ItemControlPort.fulfill_requests&quot;</span><span class="p">)</span>
+</span><span id="ItemControlPort-16"><a href="#ItemControlPort-16"><span class="linenos">16</span></a>
+</span><span id="ItemControlPort-17"><a href="#ItemControlPort-17"><span class="linenos">17</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">request_upstream</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="ItemControlPort-18"><a href="#ItemControlPort-18"><span class="linenos">18</span></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;ItemControlPort.request_upstream&quot;</span><span class="p">)</span>
 </span><span id="ItemControlPort-19"><a href="#ItemControlPort-19"><span class="linenos">19</span></a>
-</span><span id="ItemControlPort-20"><a href="#ItemControlPort-20"><span class="linenos">20</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">request_upstream</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="ItemControlPort-21"><a href="#ItemControlPort-21"><span class="linenos">21</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Stub — no-op. Placeholder for future upstream pull requests.&quot;&quot;&quot;</span>
-</span><span id="ItemControlPort-22"><a href="#ItemControlPort-22"><span class="linenos">22</span></a>        <span class="o">...</span>
-</span><span id="ItemControlPort-23"><a href="#ItemControlPort-23"><span class="linenos">23</span></a>
-</span><span id="ItemControlPort-24"><a href="#ItemControlPort-24"><span class="linenos">24</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_accept_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</span><span id="ItemControlPort-25"><a href="#ItemControlPort-25"><span class="linenos">25</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Stub — always rejects items.</span>
-</span><span id="ItemControlPort-26"><a href="#ItemControlPort-26"><span class="linenos">26</span></a>
-</span><span id="ItemControlPort-27"><a href="#ItemControlPort-27"><span class="linenos">27</span></a><span class="sd">        Args:</span>
-</span><span id="ItemControlPort-28"><a href="#ItemControlPort-28"><span class="linenos">28</span></a><span class="sd">            item: The item to accept.</span>
-</span><span id="ItemControlPort-29"><a href="#ItemControlPort-29"><span class="linenos">29</span></a>
-</span><span id="ItemControlPort-30"><a href="#ItemControlPort-30"><span class="linenos">30</span></a><span class="sd">        Returns:</span>
-</span><span id="ItemControlPort-31"><a href="#ItemControlPort-31"><span class="linenos">31</span></a><span class="sd">            False (item is always rejected).</span>
-</span><span id="ItemControlPort-32"><a href="#ItemControlPort-32"><span class="linenos">32</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="ItemControlPort-33"><a href="#ItemControlPort-33"><span class="linenos">33</span></a>        <span class="k">return</span> <span class="kc">False</span>
+</span><span id="ItemControlPort-20"><a href="#ItemControlPort-20"><span class="linenos">20</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_accept_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">Item</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="ItemControlPort-21"><a href="#ItemControlPort-21"><span class="linenos">21</span></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;ItemControlPort._accept_item&quot;</span><span class="p">)</span>
 </span></pre></div>
 
 
             <div class="docstring"><p>Placeholder item control port (manual / automation I/O).</p>
-
-<p>Currently all methods are stubs that do nothing or reject items.</p>
 </div>
 
 
@@ -158,13 +131,12 @@
 
     </div>
     <a class="headerlink" href="#ItemControlPort.fulfill_requests"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="ItemControlPort.fulfill_requests-16"><a href="#ItemControlPort.fulfill_requests-16"><span class="linenos">16</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">fulfill_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="ItemControlPort.fulfill_requests-17"><a href="#ItemControlPort.fulfill_requests-17"><span class="linenos">17</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Stub — no-op. Placeholder for future downstream pull distribution.&quot;&quot;&quot;</span>
-</span><span id="ItemControlPort.fulfill_requests-18"><a href="#ItemControlPort.fulfill_requests-18"><span class="linenos">18</span></a>        <span class="o">...</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="ItemControlPort.fulfill_requests-14"><a href="#ItemControlPort.fulfill_requests-14"><span class="linenos">14</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">fulfill_requests</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="ItemControlPort.fulfill_requests-15"><a href="#ItemControlPort.fulfill_requests-15"><span class="linenos">15</span></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;ItemControlPort.fulfill_requests&quot;</span><span class="p">)</span>
 </span></pre></div>
 
 
-            <div class="docstring"><p>Stub — no-op. Placeholder for future downstream pull distribution.</p>
+            <div class="docstring"><p>Fulfill pending pull requests by transferring items downstream.</p>
 </div>
 
 
@@ -180,13 +152,12 @@
 
     </div>
     <a class="headerlink" href="#ItemControlPort.request_upstream"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="ItemControlPort.request_upstream-20"><a href="#ItemControlPort.request_upstream-20"><span class="linenos">20</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">request_upstream</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="ItemControlPort.request_upstream-21"><a href="#ItemControlPort.request_upstream-21"><span class="linenos">21</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Stub — no-op. Placeholder for future upstream pull requests.&quot;&quot;&quot;</span>
-</span><span id="ItemControlPort.request_upstream-22"><a href="#ItemControlPort.request_upstream-22"><span class="linenos">22</span></a>        <span class="o">...</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="ItemControlPort.request_upstream-17"><a href="#ItemControlPort.request_upstream-17"><span class="linenos">17</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">request_upstream</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="ItemControlPort.request_upstream-18"><a href="#ItemControlPort.request_upstream-18"><span class="linenos">18</span></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;ItemControlPort.request_upstream&quot;</span><span class="p">)</span>
 </span></pre></div>
 
 
-            <div class="docstring"><p>Stub — no-op. Placeholder for future upstream pull requests.</p>
+            <div class="docstring"><p>Request items from upstream components.</p>
 </div>
 
 
@@ -205,6 +176,7 @@
                 <dd id="ItemControlPort.pull_rr" class="variable"><a href="../../base.html#Base.pull_rr">pull_rr</a></dd>
                 <dd id="ItemControlPort.upstream_rr" class="variable"><a href="../../base.html#Base.upstream_rr">upstream_rr</a></dd>
                 <dd id="ItemControlPort.topo_index" class="variable"><a href="../../base.html#Base.topo_index">topo_index</a></dd>
+                <dd id="ItemControlPort.grid_pos" class="variable"><a href="../../base.html#Base.grid_pos">grid_pos</a></dd>
                 <dd id="ItemControlPort.id" class="variable"><a href="../../base.html#Base.id">id</a></dd>
                 <dd id="ItemControlPort.add_link" class="function"><a href="../../base.html#Base.add_link">add_link</a></dd>
                 <dd id="ItemControlPort.finalize" class="function"><a href="../../base.html#Base.finalize">finalize</a></dd>
